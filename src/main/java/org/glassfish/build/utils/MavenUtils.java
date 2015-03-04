@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2015 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -102,8 +102,16 @@ import org.sonatype.aether.resolution.ArtifactResult;
  * @author Romain Grecourt
  */
 public class MavenUtils {
-    
-    public static Model resolveEffectiveModel(
+
+  /**
+   * Resolves the effective model of given POM file.
+   *
+   * @param modelBuilder
+   * @param modelResolver
+   * @param pomFile a file handle on the POM file
+   * @return a model instance reflecting the effective model of the supplied POM file
+   */
+  public static Model resolveEffectiveModel(
             ModelBuilder modelBuilder,
             ModelResolver modelResolver,
             File pomFile) {
@@ -118,7 +126,17 @@ public class MavenUtils {
         }
     }
 
-    public static Model resolveEffectiveModel(
+  /**
+   * Resolves the effective model of given POM file.
+   *
+   * @param modelBuilder
+   * @param repoSystem
+   * @param repoSession
+   * @param projectRepos
+   * @param pomFile a file handle on the POM file
+   * @return
+   */
+  public static Model resolveEffectiveModel(
             ModelBuilder modelBuilder,
             RepositorySystem repoSystem,
             RepositorySystemSession repoSession,
@@ -130,7 +148,7 @@ public class MavenUtils {
                 new MavenModelResolver(repoSystem, repoSession, projectRepos),
                 pomFile);
     } 
-    
+
     /**
      * Reads a given model
      * @param pom the pom File
@@ -144,10 +162,10 @@ public class MavenUtils {
             throw new MojoExecutionException(ex.getMessage(),ex);
         }
     }
-    
+
     /**
      * Reads a given model
-     * @param pom the pom File
+     * @param input the model as String
      * @return an instance of Model
      * @throws MojoExecutionException
      */
@@ -158,7 +176,7 @@ public class MavenUtils {
             throw new MojoExecutionException(ex.getMessage(),ex);
         }
     }
-    
+
     private static String getFinalName(Model model){
         Build b = model.getBuild();
         String finalName;
@@ -170,20 +188,20 @@ public class MavenUtils {
         }
         return finalName;
     }
-    
+
     /**
      * Create a list of attached artifacts and their associated files by searching for target/${project.build.finalName}-*.*
      * 
      * @param dir ${project.build.directory}
+     * @param artifact the main artifact for which corresponding attached artifacts will be searched
      * @param model an instance of model
-     * @return
+     * @return the list of attached artifacts
      * @throws MojoExecutionException
      */
     public static List<Artifact> createAttachedArtifacts(String dir, Artifact artifact, Model model)
             throws MojoExecutionException {
 
         String artifactName = "", finalName;
-        
         // compute finalName
         if(artifact!=null 
                 && artifact.getFile() != null
@@ -193,22 +211,22 @@ public class MavenUtils {
         } else {
             finalName = getFinalName(model);
         }
-        
+
         List<File> attachedFiles = MavenUtils.getFiles(
                     dir,
                     finalName+"*.*",
                     artifactName);
-        
+
         List<Artifact> attachedArtifacts = new ArrayList<Artifact>();
         if(!attachedFiles.isEmpty()){
             for(File attached : attachedFiles){
                 String tokens = attached.getName().substring(finalName.length());
-                
+
                 // pom is not an attached artifact
                 if(tokens.endsWith(".pom")){
                     continue;
                 }
-                
+
                 String type;
                 if(tokens.endsWith(".asc")){
                     // compute type as xxx.asc
@@ -220,7 +238,7 @@ public class MavenUtils {
                             tokens.lastIndexOf('.')+1,
                             tokens.length());
                 }
-                
+
                 String classifier;
                 if(tokens.endsWith(".pom.asc")){
                     // pom.asc does not have any classifier
@@ -237,7 +255,7 @@ public class MavenUtils {
                                 classifier.length() - (artifact.getVersion().length())));
                     }
                 }
-                
+
                 Artifact attachedArtifact = MavenUtils.createArtifact(model,type,classifier);
                 attachedArtifact.setFile(attached);
                 attachedArtifacts.add(attachedArtifact);
@@ -245,18 +263,14 @@ public class MavenUtils {
         }
         return attachedArtifacts;
     }
-    
+
     private static Artifact getArtifactFile(String dir, String finalName, Model model) throws MojoExecutionException{
-        List<File> files = MavenUtils.getFiles(
-                    dir,
-                    finalName+".*",
-                    finalName+"-*.");
-        
+        List<File> files = MavenUtils.getFiles(dir,finalName+".*",finalName+"-*.");
         Map<String, File> extensionMap = new HashMap<String, File>(files.size());
         for (File f : files) {
             extensionMap.put(f.getName().substring(finalName.length() + 1), f);
         }
-        
+
         // 1. guess the extension from the packaging
         File artifactFile = extensionMap.get(model.getPackaging());
         if(artifactFile != null){
@@ -266,8 +280,7 @@ public class MavenUtils {
         }
         // 2. take what's available
         for(String ext : extensionMap.keySet()){
-            if(!ext.equals("pom") 
-                    && !ext.endsWith(".asc")){
+            if(!ext.equals("pom") && !ext.endsWith(".asc")){
                 // packaging does not match the type
                 // hence we provide type = ext
                 Artifact artifact = MavenUtils.createArtifact(model,ext,null);
@@ -277,7 +290,7 @@ public class MavenUtils {
         }
         return null;
     }
-    
+
     /**
      * Create an artifact and its associated file by searching for target/${project.build.finalName}.${project.packaging}
      * 
@@ -295,7 +308,7 @@ public class MavenUtils {
         }
         return artifact;
     }
-    
+
     /**
      * Returns the pom installed in target or null if not found
      * 
@@ -305,10 +318,7 @@ public class MavenUtils {
      */
     public static File getPomInTarget(String dir) throws MojoExecutionException{
         // check for an existing .pom
-         List<File> poms = MavenUtils.getFiles(
-                    dir,
-                    "*.pom",
-                    "");
+         List<File> poms = MavenUtils.getFiles(dir,"*.pom","");
          if(!poms.isEmpty()){
             return poms.get(0);
          }
@@ -337,7 +347,7 @@ public class MavenUtils {
         }
         return Collections.EMPTY_LIST;
     }
-    
+
     /**
      * Creates an artifact instance for the supplied model
      * 
@@ -347,7 +357,7 @@ public class MavenUtils {
     public static Artifact createArtifact(Model m) {
         return createArtifact(m,m.getPackaging(),null);
     }
-    
+
     /**
      * Creates an artifact instance for the supplied model
      * 
@@ -357,7 +367,7 @@ public class MavenUtils {
      * @return the created artifact
      */
     public static Artifact createArtifact(Model m, String type, String classifier) {
-        
+
         String groupId = m.getGroupId();
         groupId = (groupId == null?m.getParent().getGroupId():groupId);
         String version = m.getVersion();
@@ -372,7 +382,7 @@ public class MavenUtils {
                 classifier,
                 new DefaultArtifactHandler(type));
     }
-    
+
     /**
      * Creates an artifact instance for the supplied coordinates
      * 
@@ -440,7 +450,7 @@ public class MavenUtils {
     public static void writePom(Model m, File buildDir) throws IOException {
         writePom(m, buildDir, null);
     }
-    
+
     /**
      * Write the model to the buildDir/${project.build.finalName}.pom
      * @param m an instance of model
@@ -463,28 +473,27 @@ public class MavenUtils {
         
         m.setPomFile(pomFile);
     }
+
     /**
      * Write the model to the buildDir/${project.build.finalName}.pom
-     * @param m an instance of model
-     * @param buildDir the directory in which to write the pom
-     * @param pomFileName the name of the written pom
-     * @throws IOException
+     * @param model an instance of model
+     * @return
+     * @throws org.apache.maven.plugin.MojoExecutionException if an IOException is caught
      */
-    public static String modelAsString(Model m) throws MojoExecutionException {
+    public static String modelAsString(Model model) throws MojoExecutionException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try{
-            new DefaultModelWriter().write(baos, null, m);
+            new DefaultModelWriter().write(baos, null, model);
             return new String(baos.toByteArray());
         } catch (IOException ex) {
             throw new MojoExecutionException(ex.getMessage(), ex);
         }
     }
-    
+
     /**
      * Write the model to the buildDir/${project.build.finalName}.pom
      * @param m an instance of model
-     * @param buildDir the directory in which to write the pom
-     * @param pomFileName the name of the written pom
+     * @return
      * @throws IOException
      */
     public static ByteArrayOutputStream writePomToOutputStream(Model m) 
@@ -564,6 +573,7 @@ public class MavenUtils {
      * @param groupId the groupId
      * @param artifactId the artifactId
      * @return the resolved version
+     * @throws org.apache.maven.plugin.MojoExecutionException
      */
     public static String getManagedVersion(
             MavenProject module, String groupId, String artifactId) 
@@ -632,9 +642,7 @@ public class MavenUtils {
                 useDefaultExcludes,
                 (String[]) excludes.toArray(new String[excludes.size()]));
     }
-    
-    
-    
+
     public static String getCombinedIncludes(
             List additionalIncludes,
             String[] includes) {
@@ -662,7 +670,8 @@ public class MavenUtils {
             }
         }
         return sb.toString();
-    }   
+    }
+
     public static String getCombinedIncludes(
             List additionalIncludes,
             List includes) {
@@ -678,6 +687,7 @@ public class MavenUtils {
      * @param p the project on which to execute
      * @param dependencySets a map to cache the dependency set, can be null
      * @return The dependency set
+     * @throws org.apache.maven.plugin.MojoExecutionException
      */
     public static Set<Artifact> getDependencySet(
             MavenProject p, Map<MavenProject, Set<Artifact>> dependencySets) 
@@ -702,7 +712,7 @@ public class MavenUtils {
         }
         return artifacts;
     }
-    
+
     /**
      * Filters a set of artifacts
      * 
@@ -724,7 +734,7 @@ public class MavenUtils {
             String excludeScope,
             String excludeTypes,
             String includeTypes) throws MojoExecutionException {
-        
+
         return filterArtifacts(
                 artifacts,
                 dependencyArtifacts,
@@ -740,7 +750,7 @@ public class MavenUtils {
                 null,
                 null);
     }
-    
+
     /**
      * Filters a set of artifacts
      * 
@@ -765,9 +775,9 @@ public class MavenUtils {
                 null,
                 null,
                 null,
-                null);        
+                null);
     }
-    
+
     /**
      * Filters a set of artifacts
      * 
@@ -801,7 +811,7 @@ public class MavenUtils {
             String excludeGroupIds,
             String includeArtifactIds,
             String excludeArtifactIds) throws MojoExecutionException {
-        
+
         // init all params with empty string if null
         includeScope = (includeScope == null? "":includeScope);
         excludeScope = (excludeScope == null? "":excludeScope);
@@ -847,8 +857,6 @@ public class MavenUtils {
         }
         return artifacts;
     }
-    
-    
 
     /**
      * Unpacks a given file
@@ -968,7 +976,7 @@ public class MavenUtils {
         }
         return result;
     }
-    
+
     public static ArtifactResult resolveArtifact(
             String groupId,
             String artifactId,
@@ -1003,18 +1011,18 @@ public class MavenUtils {
         }
         return ret;
     }
-    
+
     public static ModifiedPomXMLEventReader newModifiedPomXER(StringBuilder input) 
             throws XMLStreamException {
-        
+
         XMLInputFactory inputFactory = XMLInputFactory2.newInstance();
         inputFactory.setProperty(XMLInputFactory2.P_PRESERVE_LOCATION, Boolean.TRUE);
         return new ModifiedPomXMLEventReader(input, inputFactory);
     }
-    
+
     public static void writeFile(File outFile, StringBuilder input) 
             throws IOException {
-        
+
         Writer writer = WriterFactory.newXmlWriter(outFile);
         try {
             IOUtil.copy(input.toString(), writer);
@@ -1022,7 +1030,7 @@ public class MavenUtils {
             IOUtil.close(writer);
         }
     }
-    
+
     public static List<String> getCommaSeparatedList(String list){
         if (list != null) {
             String[] listArray = list.split(",");
@@ -1032,7 +1040,7 @@ public class MavenUtils {
         }
         return Collections.EMPTY_LIST;
     }
-    
+
     private static String listToString(List<String> list) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < list.size(); i++) {
@@ -1043,31 +1051,31 @@ public class MavenUtils {
         }
         return sb.toString();
     }
-    
+
     public static ZipFileSet createZipFileSet(
             File dir,
             List<String> includes,
             List<String> excludes) {
-        
+
         return createZipFileSet(
                 dir,
                 listToString(includes),
                 listToString(excludes));
     }
-    
+
     public static ZipFileSet createZipFileSet(
             File dir,
             String prefix,
             List<String> includes,
             List<String> excludes) {
-        
+
         ZipFileSet fset = createZipFileSet(dir, includes, excludes);
         if (prefix != null && !prefix.isEmpty()) {
             fset.setPrefix(prefix);
         }
         return fset;
     }
-    
+
     public static ZipFileSet createZipFileSet(
             File dir,
             String includes,
@@ -1084,7 +1092,7 @@ public class MavenUtils {
                 includes));
         return fset;
     }
-    
+
     public static ZipFileSet createZipFileSet(
             File dir,
             String prefix,
@@ -1096,7 +1104,7 @@ public class MavenUtils {
         }
         return fset;
     }
-    
+
     public static File createZip(
             Properties props,
             Log log,
@@ -1108,7 +1116,7 @@ public class MavenUtils {
         zipUtil.zip(props, log, duplicate, fsets, target);
         return target;
     }
-    
+
     public static File createZip(
             Properties props,
             Log log,
@@ -1123,8 +1131,8 @@ public class MavenUtils {
 
     private static class ZipUtil implements BuildListener {
 
-        private org.apache.tools.ant.taskdefs.Zip zip;
-        private Project antProject;
+        private final org.apache.tools.ant.taskdefs.Zip zip;
+        private final Project antProject;
         private Log log;
 
         private ZipUtil() {
