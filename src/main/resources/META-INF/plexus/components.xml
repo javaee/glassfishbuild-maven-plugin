@@ -2,7 +2,7 @@
 
     DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 
-    Copyright (c) 2010 Oracle and/or its affiliates. All rights reserved.
+    Copyright (c) 2010-2017 Oracle and/or its affiliates. All rights reserved.
 
     The contents of this file are subject to the terms of either the GNU
     General Public License Version 2 only ("GPL") or the Common Development
@@ -81,7 +81,7 @@
             <id>default</id>
             <phases>
               <process-resources>
-                  org.apache.maven.plugins:maven-dependency-plugin:unpack-dependencies,
+                  org.glassfish.build:glassfishbuild-maven-plugin:featuresets-dependencies,
                   org.apache.maven.plugins:maven-assembly-plugin:single
               </process-resources>
               <package>org.glassfish.build:glassfishbuild-maven-plugin:zip</package>

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2015 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -90,12 +90,12 @@ import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
 import org.codehaus.stax2.XMLInputFactory2;
-import org.sonatype.aether.RepositorySystem;
-import org.sonatype.aether.RepositorySystemSession;
-import org.sonatype.aether.repository.RemoteRepository;
-import org.sonatype.aether.resolution.ArtifactRequest;
-import org.sonatype.aether.resolution.ArtifactResolutionException;
-import org.sonatype.aether.resolution.ArtifactResult;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.repository.RemoteRepository;
+import org.eclipse.aether.resolution.ArtifactRequest;
+import org.eclipse.aether.resolution.ArtifactResolutionException;
+import org.eclipse.aether.resolution.ArtifactResult;
 
 /**
  *
@@ -959,7 +959,7 @@ public class MavenUtils {
      * @throws MojoExecutionException
      */
     public static ArtifactResult resolveArtifact(
-            org.sonatype.aether.util.artifact.DefaultArtifact requestArtifact,
+            org.eclipse.aether.artifact.DefaultArtifact requestArtifact,
             RepositorySystem repoSystem,
             RepositorySystemSession repoSession,
             List<RemoteRepository> remoteRepos) throws MojoExecutionException {
@@ -988,7 +988,7 @@ public class MavenUtils {
             List<RemoteRepository> remoteRepos) throws MojoExecutionException {
 
         return resolveArtifact(
-                new org.sonatype.aether.util.artifact.DefaultArtifact(
+                new org.eclipse.aether.artifact.DefaultArtifact(
                 groupId,
                 artifactId,
                 classifier,
