@@ -122,11 +122,23 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
      */
     protected String copyTypes;
     /**
+     * Comma separated list of (g:)a(:v) to excludes for unpack
+     *
+     * @parameter expression="${gfbuild.featuresets.dependencies.copyExcludes}" default-value=""
+     */
+    protected String copyExcludes;
+    /**
      * Comma separated list of file extensions to include for unpack
      *
      * @parameter expression="${gfbuild.featuresets.dependencies.unpackTypes}" default-value="zip"
      */
     protected String unpackTypes;
+    /**
+     * Comma separated list of (g:)a(:v) to excludes for unpack
+     *
+     * @parameter expression="${gfbuild.featuresets.dependencies.unpackExcludes}" default-value=""
+     */
+    protected String unpackExcludes;
     /**
      * @parameter expression="${gfbuild.featuresets.dependencies.includes}"
      */
@@ -157,17 +169,66 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
     protected String featureSetGroupIdIncludes;
     /**
      * @parameter 
-     * expression="${gfbuild.featuresets.dependencies.silent}"
-     * default-value="true"
-     */
-    private boolean silent;
-
-    /**
-     * @parameter 
      * expression="${gfbuild.featuresets.dependencies.skip}"
      * default-value="false"
-     */    
+     */
     private boolean skip;
+    /**
+     * @parameter
+     */    
+    protected List<DependencyMapping> mappings;
+
+    public static class DependencyMapping {
+        private String groupId;
+        private String artifactId;
+        private String name;
+
+        public void setArtifactId(String artifactId) {
+            this.artifactId = artifactId;
+        }
+
+        public String getArtifactId() {
+            return artifactId;
+        }
+
+        public void setGroupId(String groupId) {
+            this.groupId = groupId;
+        }
+
+        public String getGroupId() {
+            return groupId;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    private String getMapping(org.eclipse.aether.artifact.Artifact artifact) {
+        if (artifact == null) {
+            throw new IllegalArgumentException("artifact must be non null");
+        }
+        if (mappings != null && !mappings.isEmpty()) {
+            for (DependencyMapping mapping : mappings) {
+                // if groupId is supplied, filter groupId
+                if(mapping.getGroupId() != null && !mapping.getGroupId().isEmpty()){
+                    if(!artifact.getGroupId().equals(mapping.getGroupId())){
+                        continue;
+                    }
+                }
+                if (artifact.getArtifactId().equals(mapping.getArtifactId())
+                        && mapping.getName() != null
+                        && !mapping.getName().isEmpty()) {
+                    return mapping.getName();
+                }
+            }
+        }
+        return artifact.getArtifactId();
+    }
 
     private static List<String> stringAsList(String str, String c) {
         if (str != null && !str.isEmpty()) {
@@ -178,6 +239,39 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
 
     private boolean isScopeIncluded(String str) {
         return includeScope.contains(str) && !excludeScope.contains(str);
+    }
+
+    private boolean isArtifactExcluded(List<String> excludes, org.eclipse.aether.artifact.Artifact artifact){
+        for(String exclude : excludes){
+            String[] gav = exclude.split(":");
+            if(gav == null || gav.length == 0){
+                continue;
+            }
+            switch(gav.length){
+                // gav == artifactId
+                case 1:
+                    if(artifact.getArtifactId().equals(gav[0])){
+                        return true;
+                    }
+                    break;
+                // gav == groupId:artifactId
+                case 2:
+                    if(artifact.getGroupId().equals(gav[0]) 
+                            && artifact.getArtifactId().equals(gav[1])){
+                        return true;
+                    }
+                    break;
+                // gav == groupId:artifactId:version
+                case 3:
+                    if(artifact.getGroupId().equals(gav[0]) 
+                            && artifact.getArtifactId().equals(gav[1])
+                            && artifact.getVersion().equals(gav[2])){
+                        return true;
+                    }
+                    break;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -192,6 +286,8 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
         List<String> featureSetGroupIdIncludes_l = stringAsList(featureSetGroupIdIncludes, ",");
         List<String> copyTypes_l = stringAsList(copyTypes,",");
         List<String> unpackTypes_l = stringAsList(unpackTypes,",");
+        List<String> unpackExcludes_l = stringAsList(unpackExcludes, ",");
+        List<String> copyExcludes_l = stringAsList(copyExcludes, ",");
 
         // get all direct featureset dependencies's direct dependencies
         final Set<Dependency> dependencies = new HashSet<Dependency>();
@@ -261,7 +357,6 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
         stageDirectory.mkdir();
 
         for (ArtifactResult dependency : resolvedDependencies) {
-            getLog().info(dependency.toString());
 
             File sourceFile = dependency.getArtifact().getFile();
             if (sourceFile == null) {
@@ -269,31 +364,62 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
                 continue;
             }
 
-            if (copyTypes_l.contains(dependency.getArtifact().getExtension())) {
-                if (sourceFile.getName().isEmpty()) {
-                    getLog().info("Skipping " + dependency.toString() + ": empty file name");
+            if (sourceFile.getName().isEmpty()) {
+                getLog().info("dependency " + dependency.getArtifact().toString() + ": empty file name");
+                continue;
+            }
+
+            boolean doCopy = copyTypes_l.contains(dependency.getArtifact().getExtension());
+            boolean doUnpack = unpackTypes_l.contains(dependency.getArtifact().getExtension());
+            if(doCopy && doUnpack){
+                boolean isUnpackExcluded = isArtifactExcluded(unpackExcludes_l, dependency.getArtifact());
+                boolean isCopyExcluded = isArtifactExcluded(copyExcludes_l, dependency.getArtifact());
+                if(isUnpackExcluded && isCopyExcluded){
+                    // if both are included, do nothing
+                    getLog().warn("Excluded: "+dependency.getArtifact().toString());
+                    doCopy = false;
+                    doUnpack = false;
+                } else if (isCopyExcluded && isUnpackExcluded){
+                    // not excluded, copy trumps
+                    doCopy = true;
+                    doUnpack = false;
+                } else if(isCopyExcluded){
+                    doCopy = false;
+                    doUnpack = true;
+                } else {
+                    doCopy = true;
+                    doUnpack = false;
                 }
-                File destFile = new File(stageDirectory, 
-                        dependency.getArtifact().getArtifactId()+"."+dependency.getArtifact().getExtension());
-                if (!silent) {
-                    getLog().info("copying " + sourceFile.getPath() + " to " + destFile.getPath());
-                }
+            }
+
+            if (doCopy) {
+                String mapping = getMapping(dependency.getArtifact());
+                File destFile = new File(stageDirectory,
+                        mapping + "." + dependency.getArtifact().getExtension());
+                String relativeDestFile = destFile.getPath().substring(
+                        project.getBasedir().getPath().length()+1);
+                getLog().info("Copying " + dependency.getArtifact() + " to " + relativeDestFile);
                 try {
                     FileUtils.copyFile(sourceFile, destFile);
                 } catch (IOException ex) {
                     getLog().error(ex.getMessage(), ex);
                 }
-            } else if (unpackTypes_l.contains(dependency.getArtifact().getExtension())) {
+            }
+
+            if (doUnpack) {
+                String mapping = getMapping(dependency.getArtifact());
+                File destDir = new File(stageDirectory,mapping);
+                String relativeDestDir = destDir.getPath().substring(
+                        project.getBasedir().getPath().length()+1);
+                getLog().info("Unpacking " + dependency.getArtifact() + " to " + relativeDestDir);
                 MavenUtils.unpack(
                         sourceFile,
-                        stageDirectory,
+                        destDir,
                         includes,
                         excludes,
-                        silent,
+                        true,
                         getLog(),
                         archiverManager);
-            } else {
-                getLog().error("extension not handled for: " + dependency.toString());
             }
         }
     }
