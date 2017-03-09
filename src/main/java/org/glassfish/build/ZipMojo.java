@@ -136,14 +136,14 @@ public class ZipMojo extends AbstractMojo {
      * 
      * @parameter expression="${gfzip.attach}" default-value="true"
      */
-    protected Boolean attach;  
+    protected Boolean attach;
     
 
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         this.project.addCompileSourceRoot(null);
         List<ZipFileSet> fsets;
-        if(filesets != null || filesets.length >0){
+        if(filesets != null && filesets.length >0){
             fsets = Arrays.asList(filesets);
         } else {
             fsets = new ArrayList<ZipFileSet>();

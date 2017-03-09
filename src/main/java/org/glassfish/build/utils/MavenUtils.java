@@ -1088,8 +1088,8 @@ public class MavenUtils {
                 String.format(
                 "file set: %s ( excludes: [ %s ], includes: [ %s ])",
                 dir.getAbsolutePath(),
-                excludes,
-                includes));
+                excludes == null ? "" : excludes,
+                includes == null ? "" : includes));
         return fset;
     }
 
