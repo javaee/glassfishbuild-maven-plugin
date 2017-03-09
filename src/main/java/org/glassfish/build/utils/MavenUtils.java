@@ -1165,6 +1165,7 @@ public class MavenUtils {
             if (fsets == null){
                 fsets = new ArrayList<ZipFileSet>();
             }
+
             if(fsets.isEmpty()) {
                 ZipFileSet zfs = MavenUtils.createZipFileSet(new File(""), "","");
                 // work around for 
@@ -1173,10 +1174,13 @@ public class MavenUtils {
                 zfs.setFileMode("644");
                 fsets.add(zfs);
             }
-            
+
             for(ZipFileSet fset:fsets){
                 zip.addZipfileset(fset);
-                log.info(String.format("[zip] %s", fset.getDescription()));
+                String desc = fset.getDescription();
+                if(desc != null && !desc.isEmpty()){
+                    log.info(String.format("[zip] %s", desc));
+                }
             }
             zip.executeMain();
         }

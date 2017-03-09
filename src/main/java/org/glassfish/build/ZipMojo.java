@@ -41,6 +41,9 @@
 package org.glassfish.build;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.maven.artifact.handler.ArtifactHandler;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -99,7 +102,7 @@ public class ZipMojo extends AbstractMojo {
 
     /**
      * dir the root of the directory tree of the default FileSet ;
-     * Only when not fileset(s) provided.
+     * Only when no fileset(s) provided.
      * 
      * @parameter expression="${gfzip.dir}" default-value="${project.build.directory}"
      */
@@ -107,7 +110,7 @@ public class ZipMojo extends AbstractMojo {
 
     /**
      * comma- or space-separated list of patterns of files that must be included ;
-     * all files are included when omitted ; Only when not fileset(s) provided.
+     * all files are included when omitted ; Only when no fileset(s) provided.
      *
      * @parameter expression="${gfzip.includes}"
      */
@@ -115,7 +118,7 @@ public class ZipMojo extends AbstractMojo {
 
     /**
      * comma- or space-separated list of patterns of files that must be included ;
-     * all files are included when omitted ; Only when not fileset(s) provided.
+     * all files are included when omitted ; Only when no fileset(s) provided.
      *
      * @parameter expression="${gfzip.excludes}"
      */
@@ -137,17 +140,24 @@ public class ZipMojo extends AbstractMojo {
     
 
     public void execute() throws MojoExecutionException, MojoFailureException {
-        
+
         this.project.addCompileSourceRoot(null);
+        List<ZipFileSet> fsets;
+        if(filesets != null || filesets.length >0){
+            fsets = Arrays.asList(filesets);
+        } else {
+            fsets = new ArrayList<ZipFileSet>();
+            fsets.add(MavenUtils.createZipFileSet(dir, includes, excludes));
+        }
 
         File target = MavenUtils.createZip(
                 project.getProperties(),
                 getLog(),
                 duplicate,
-                MavenUtils.createZipFileSet(dir, includes, excludes),
+                fsets,
                 new File(outputDirectory, finalName + '.' + extension));
 
-        if (attach.booleanValue()) {
+        if (attach) {
             project.getArtifact().setFile(target);
             project.getArtifact().setArtifactHandler(new DistributionArtifactHandler(extension, project.getPackaging()));
         }
