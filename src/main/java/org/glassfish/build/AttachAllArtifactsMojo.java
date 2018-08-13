@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,47 +42,54 @@ package org.glassfish.build;
 import java.io.File;
 import java.util.Iterator;
 import java.util.List;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.metadata.ArtifactMetadata;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.artifact.ProjectArtifactMetadata;
-import org.glassfish.build.utils.MavenUtils;
+
+import static org.glassfish.build.utils.MavenUtils.createArtifact;
+import static org.glassfish.build.utils.MavenUtils.createAttachedArtifacts;
+import static org.glassfish.build.utils.MavenUtils.getPomInTarget;
+import static org.glassfish.build.utils.MavenUtils.readModel;
 
 /**
- * Guess artifacts from target directory and attach them to the project
- * does not require any phase to run
- * does not require any dependency resolution
- *
- * @goal attach-all-artifacts
- * @requiresOnline true
+ * Guess artifacts from target directory and attach them to the project.
+ * It does not require any phase to run, nor require any dependency resolution.
  *
  * @author Romain Grecourt
  */
+@Mojo(name = "attach-all-artifacts",
+      requiresOnline = true)
 public class AttachAllArtifactsMojo extends AbstractMojo {
 
     /**
-     * @parameter default-value="${project}"
-     * @required
-     * @readonly
+     * The maven project.
      */
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
     private MavenProject project;
-    
+
     /**
-     * @parameter expression="${attach.all.artifacts.pomFile}" default-value="${project.file}"
-     * @required
+     * The project pom file.
      */
+    @Parameter(property = "attach.all.artifacts.pomFile",
+            defaultValue = "${project.file}",
+            required = true)
     private File pomFile;
-    
+
     /**
-     *       
-     * @parameter expression="${attach.all.artifacts.skip}" default-value="false"
+     * Skip this mojo.
      */
+    @Parameter(property = "attach.all.artifacts.skip", defaultValue = "false")
     private boolean skip;
-    
+
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         if (skip) {
             getLog().info("Skipping artifact attachment");
@@ -90,44 +97,45 @@ public class AttachAllArtifactsMojo extends AbstractMojo {
         }
 
         // check for an existing .pom under target
-        File targetPom = MavenUtils.getPomInTarget(project.getBuild().getDirectory());
+        File targetPom = getPomInTarget(project.getBuild().getDirectory());
         if(targetPom != null){
             pomFile = targetPom;
         }
-        
+
         // if supplied pomFile is invalid, default to the project's pom
         if(pomFile == null || !pomFile.exists()){
             pomFile = project.getFile();
         }
-        
+
         if(!pomFile.exists()){
             getLog().info("Skipping as there is no model to read from");
             return;
         }
-        
+
         // read the model manually
-        Model model = MavenUtils.readModel(pomFile);
-        
+        Model model = readModel(pomFile);
+
         // create the project artifact manually
-        Artifact artifact = MavenUtils.createArtifact(project.getBuild().getDirectory(), model);
+        Artifact artifact = createArtifact(project.getBuild().getDirectory(), model);
         if(artifact == null){
             getLog().info("Skipping as there is no file found for this artifact");
             return;
         }
-        
+
         // create the project attached artifacts manually
         List<Artifact> attachedArtifacts = 
-                MavenUtils.createAttachedArtifacts(project.getBuild().getDirectory(), artifact, model);
-       
-        // add metadata to the project is not a "pom" type
+                createAttachedArtifacts(project.getBuild().getDirectory(),
+                        artifact, model);
+
+        // add metadata to the project if not a "pom" type
         if (!"pom".equals(model.getPackaging())) {
             ArtifactMetadata metadata = new ProjectArtifactMetadata(artifact, pomFile);
             artifact.addMetadata(metadata);
         }
-        
+
         // set main artifact
         project.setArtifact(artifact);
-        
+
         // set model
         project.setFile(pomFile);
 

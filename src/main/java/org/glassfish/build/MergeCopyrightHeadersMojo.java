@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -49,45 +49,51 @@ import java.io.IOException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 
 /**
- * merges two property files properly
- *
- * @goal merge-copyright-headers
+ * Merges two property files properly.
  *
  * @author Romain Grecourt
  * @author Sandeep Shrivastava
  */
+@Mojo(name = "merge-copyright-headers")
 public class MergeCopyrightHeadersMojo extends AbstractMojo {
  
     private static final String LINE_SEP = System.getProperty("line.separator");
+    private static final String PROPERTY_PREFIX = "merge.copyright.headers.outputFile";
 
     /**
-     * @parameter expression="${merge.copyright.headers.outputFile}" default-value="${project.build.directory}/merged.properties"
+     * The merged file.
      */
+    @Parameter(property = PROPERTY_PREFIX + "outputFile",
+            defaultValue = "${project.build.directory}/merged.properties")
     protected File outputFile;
    
     /**
-     *
-     * @parameter expression="${merge.copyright.headers.inputFiles}"
+     * The files to merge.
      */
+    @Parameter(property = PROPERTY_PREFIX + "inputFiles")
     protected File[] inputFiles;
 
     /**
-     *
-     * @parameter expression="${merge.copyright.headers.skip}" default-value="false"
+     * Skip this mojo.
      */
+    @Parameter(property = PROPERTY_PREFIX + "skip",
+            defaultValue = "false")
     protected Boolean skip;
 
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if(skip != null && skip.booleanValue()){
+        if(skip != null && skip){
             getLog().info("Skipping file merge ...");
             return;
         }
-        
+
         BufferedReader br1=null, br2=null;
         BufferedWriter writer=null;
-        
+
         try {
             
             String line;
@@ -126,10 +132,10 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
                     } finally {
                         if (br2 != null) {
                             br2.close();
-                        }         
+                        }
                     }
                 }
-                
+
                 try {
                     // Initialize the writer and write the merged contents
                     writer = new BufferedWriter(new FileWriter(outputFile));
@@ -138,9 +144,9 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
                 } finally {
                     if (writer != null) {
                         writer.close();
-                    }                    
-                }                
-            }            
+                    }
+                }
+            }
         } catch (IOException ex) {
             throw new MojoExecutionException(ex.getMessage(), ex);
         } 

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2017 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -42,51 +42,61 @@ package org.glassfish.build;
 import java.io.File;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+
 import org.codehaus.plexus.archiver.manager.ArchiverManager;
-import org.glassfish.build.utils.MavenUtils;
+
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactResult;
-import org.eclipse.aether.artifact.DefaultArtifact;
+
+import static org.glassfish.build.utils.MavenUtils.cleanToBeTokenizedString;
+import static org.glassfish.build.utils.MavenUtils.filterArtifacts;
+import static org.glassfish.build.utils.MavenUtils.resolveArtifact;
+import static org.glassfish.build.utils.MavenUtils.unpack;
 
 /**
- * Resolves and unpack corresponding sources of project's dependencies
- *
- * @goal unpack-sources
- * @requiresDependencyResolution compile
- * @phase process-resources
- * @requiresProject
+ * Resolves and unpack corresponding sources of project dependencies.
  *
  * @author Romain Grecourt
  */
+@Mojo(name = "unpack-sources",
+        requiresDependencyResolution = ResolutionScope.RUNTIME,
+        defaultPhase = LifecyclePhase.PROCESS_RESOURCES,
+        requiresProject = true)
 public class UnpackSourcesMojo extends AbstractMojo {
+
+    private static final String PROPERTY_PREFIX = "gfbuild.unpack";
 
     /**
      * The maven project.
-     *
-     * @parameter expression="${project}"
-     * @required
-     * @readonly
      */
-    protected MavenProject project;
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
+    private MavenProject project;
+
     /**
-     * The entry point to Aether, i.e. the component doing all the work.
-     *
-     * @component
+     * The entry point to Aether.
      */
+    @Component
     private RepositorySystem repoSystem;
+
     /**
      * The current repository/network configuration of Maven.
-     *
-     * @parameter default-value="${repositorySystemSession}"
-     * @readonly
      */
+    @Parameter(defaultValue = "${repositorySystemSession}",
+            readonly = true)
     private RepositorySystemSession repoSession;
+
     /**
      * The project's remote repositories to use for the resolution of plugins
      * and their dependencies.
@@ -95,125 +105,142 @@ public class UnpackSourcesMojo extends AbstractMojo {
      * @readonly
      */
     private List<RemoteRepository> remoteRepos;
+
     /**
-     * To look up Archiver/UnArchiver implementations
-     *
-     * @component
+     * To look up Archiver/UnArchiver implementations.
      */
+    @Component
     protected ArchiverManager archiverManager;
+
     /**
-     * @parameter expression="${gfbuild.unpack.includes}"
+     * Comma separated list of include patterns.
      */
+    @Parameter(property = PROPERTY_PREFIX + "includes")
     private String includes;
+
     /**
-     * @parameter expression="${gfbuild.unpack.excludes}"
+     * Comma separated list of include patterns.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludes")
     private String excludes;
+
     /**
-     * If we should exclude transitive dependencies
-     *
-     * @optional
-     * @parameter expression="${excludeTransitive}" default-value="false"
+     * If we should exclude transitive dependencies.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeTransitive",
+            defaultValue = "",
+            required = false)
     protected boolean excludeTransitive;
+
     /**
-     * Comma Separated list of Types to include. Empty String indicates include
-     * everything (default).
-     *
-     * @parameter expression="${includeTypes}" default-value=""
-     * @optional
+     * Comma Separated list of Types to include.
+     * Empty String indicates include everything (default).
      */
+    @Parameter(property = PROPERTY_PREFIX + "includeTypes",
+            defaultValue = "",
+            required = false)
     protected String includeTypes;
+
     /**
-     * Comma Separated list of Types to exclude. Empty String indicates don't
-     * exclude anything (default).
-     *
-     * @parameter expression="${excludeTypes}" default-value=""
-     * @optional
+     * Comma Separated list of Types to exclude.
+     * Empty String indicates don't exclude anything (default).
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeTypes",
+            defaultValue = "",
+            required = false)
     protected String excludeTypes;
+
     /**
-     * Scope to include. An Empty string indicates all scopes (default).
-     *
-     * @parameter expression="${includeScope}" default-value=""
-     * @optional
+     * Scope to include.
+     * An Empty string indicates all scopes (default).
      */
+    @Parameter(property = PROPERTY_PREFIX + "includeScope",
+            defaultValue = "",
+            required = false)
     protected String includeScope;
+
     /**
-     * Scope to exclude. An Empty string indicates no scopes (default).
-     *
-     * @parameter expression="${excludeScope}" default-value=""
-     * @optional
+     * Scope to exclude.
+     * An Empty string indicates no scopes (default).
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeScope",
+            defaultValue = "",
+            required = false)
     protected String excludeScope;
+
     /**
-     * Comma Separated list of Classifiers to include. Empty String indicates
-     * include everything (default).
-     *
-     * @parameter expression="${includeClassifiers}" default-value=""
-     * @optional
+     * Comma Separated list of Classifiers to include.
+     * Empty String indicates include everything (default).
      */
+    @Parameter(property = PROPERTY_PREFIX + "includeClassifiers",
+            defaultValue = "",
+            required = false)
     protected String includeClassifiers;
+
     /**
-     * Comma Separated list of Classifiers to exclude. Empty String indicates
-     * don't exclude anything (default).
-     *
-     * @parameter expression="${excludeClassifiers}" default-value=""
-     * @optional
+     * Comma Separated list of Classifiers to exclude.
+     * Empty String indicates don't exclude anything (default).
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeClassifiers",
+            defaultValue = "",
+            required = false)
     protected String excludeClassifiers;
+
     /**
-     * Comma separated list of Artifact names too exclude.
-     *
-     * @optional
-     * @parameter expression="${excludeArtifactIds}" default-value=""
+     * Comma separated list of Artifact names to exclude.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeArtifactIds",
+            defaultValue = "",
+            required = false)
     protected String excludeArtifactIds;
+
     /**
      * Comma separated list of Artifact names to include.
-     *
-     * @optional
-     * @parameter expression="${includeArtifactIds}" default-value=""
      */
+    @Parameter(property = PROPERTY_PREFIX + "includeArtifactIds",
+            defaultValue = "")
     protected String includeArtifactIds;
+
     /**
      * Comma separated list of GroupId Names to exclude.
-     *
-     * @optional
-     * @parameter expression="${excludeGroupIds}" default-value=""
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeGroupIds",
+            defaultValue = "")
     protected String excludeGroupIds;
+
     /**
      * Comma separated list of GroupIds to include.
-     *
-     * @optional
-     * @parameter expression="${includeGroupIds}" default-value=""
      */
+    @Parameter(property = PROPERTY_PREFIX + "includeGroupIds",
+            defaultValue = "")
     protected String includeGroupIds;
+
     /**
-     * @parameter 
-     * expression="${gfbuild.unpack.outputDirectory}"
-     * default-value="${project.build.directory}/sources-dependency"
+     * Directory where the sources artifacts are unpacked.
      */
+    @Parameter(property = PROPERTY_PREFIX + "outputDirectory",
+            defaultValue = "${project.build.directory}/sources-dependency")
     private File outputDirectory;
+
     /**
-     * @parameter 
-     * expression="${gfbuild.unpack.silent}"
-     * default-value="false"
+     * Verbosity.
      */
+    @Parameter(property = PROPERTY_PREFIX + "silent",
+            defaultValue = "false")
     private boolean silent;
+
     /**
-     * @parameter 
-     * expression="${gfbuild.unpack.attach-sources}"
-     * default-value="false"
+     * Attach the generated artifact to the maven project.
      */
+    @Parameter(property = PROPERTY_PREFIX + "attach-sources",
+            defaultValue = "false")
     private boolean attachSources;
-    
+
     /**
-     * @parameter 
-     * expression="${gfbuild.unpack.skip}"
-     * default-value="false"
-     */    
+     * Skip this mojo.
+     */
+    @Parameter(property = PROPERTY_PREFIX + "skip",
+            defaultValue = "false")
     private boolean skip;
 
     @Override
@@ -221,47 +248,28 @@ public class UnpackSourcesMojo extends AbstractMojo {
         if (skip) {
             getLog().info("Skipping unpack-sources");
             return;
-        }        
-        
+        }
+
         // get dependencies
-        Set<Artifact> filteredDependencies = MavenUtils.filterArtifacts(
-                project.getArtifacts(),
-                project.getDependencyArtifacts(),
-                excludeTransitive,
-                includeScope,
-                excludeScope,
-                excludeTypes,
-                includeTypes,
-                includeClassifiers,
-                excludeClassifiers,
-                includeGroupIds,
-                excludeGroupIds,
-                includeArtifactIds,
+        Set<Artifact> filteredDependencies = filterArtifacts(
+                project.getArtifacts(), project.getDependencyArtifacts(),
+                excludeTransitive, includeScope, excludeScope, excludeTypes,
+                includeTypes, includeClassifiers, excludeClassifiers,
+                includeGroupIds, excludeGroupIds, includeArtifactIds,
                 excludeArtifactIds);
 
         for (Artifact artifact : filteredDependencies) {
 
             // resolve sources.jar
-            DefaultArtifact requestArtifact = new DefaultArtifact(
-                    artifact.getGroupId(),
-                    artifact.getArtifactId(),
-                    "sources",
-                    "jar",
-                    artifact.getVersion());
-            ArtifactResult result = MavenUtils.resolveArtifact(
-                    requestArtifact,
-                    repoSystem,
-                    repoSession,
-                    remoteRepos);
+            ArtifactResult result = resolveArtifact(artifact.getGroupId(),
+                    artifact.getArtifactId(), /* classifier */ "sources",
+                    /* type */ "jar", artifact.getVersion(), repoSystem,
+                    repoSession, remoteRepos);
 
             // unpack
-            MavenUtils.unpack(
-                    result.getArtifact().getFile(),
-                    outputDirectory,
-                    MavenUtils.cleanToBeTokenizedString(this.includes),
-                    MavenUtils.cleanToBeTokenizedString(this.excludes),
-                    silent,
-                    getLog(),
+            unpack(result.getArtifact().getFile(), outputDirectory,
+                    cleanToBeTokenizedString(this.includes),
+                    cleanToBeTokenizedString(this.excludes), silent, getLog(),
                     archiverManager);
         }
 

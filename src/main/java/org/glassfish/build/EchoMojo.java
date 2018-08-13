@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2008-2013 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -43,22 +43,25 @@ package org.glassfish.build;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 
 /**
- * Echo
- * @goal echo
+ * Echo a message.
  */
+@Mojo(name = "echo")
 public class EchoMojo extends AbstractMojo 
 {
     /**
      * Any String to print out.
-     * @parameter expression="${message}"
      */
+    @Parameter(property = "message")
     private String message;
 
+    @Override
     public void execute() throws MojoExecutionException,  MojoFailureException {
         getLog().info("------------------------------------------------------------------------");
-        getLog().info( message.toString());
+        getLog().info(message);
         getLog().info("------------------------------------------------------------------------");
     }
 }

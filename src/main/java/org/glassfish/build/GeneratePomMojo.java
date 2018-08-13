@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -41,10 +41,11 @@ package org.glassfish.build;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.List;
+
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
@@ -60,211 +61,237 @@ import org.apache.maven.model.building.ModelBuilder;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.mojo.versions.api.PomHelper;
-import org.glassfish.build.utils.MavenUtils;
+
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.impl.RemoteRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 
+import static org.glassfish.build.utils.MavenUtils.getCommaSeparatedList;
+import static org.glassfish.build.utils.MavenUtils.readModel;
+import static org.glassfish.build.utils.MavenUtils.writePomToOutputStream;
+
 /**
  * Generates a pom from another pom
  *
- * @goal generate-pom
- *
  * @author Romain Grecourt
  */
+@Mojo(name = "generate-pom")
 public class GeneratePomMojo extends AbstractMojo {
+
+    private static final String PROPERTY_PREFIX = "generate.pom.";
+
     /**
-     * @parameter default-value="${project}"
-     * @required
-     * @readonly
+     * The maven project.
      */
-    protected MavenProject project;
- 
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
+    private MavenProject project;
+
     /**
-     * @parameter expression="${generate.pom.outputDirectory}" default-value="${project.build.directory}"
+     * The output directory where the file is written.
      */
+    @Parameter(property = PROPERTY_PREFIX + "outputDirectory",
+               defaultValue = "${project.build.directory}")
     protected File outputDirectory;
-    
+
     /**
-     * @parameter expression="${generate.pom.pomFile}" default-value="${project.file}"
+     * The input pom file.
      */
+    @Parameter(property = PROPERTY_PREFIX + "pomFile",
+            defaultValue = "${project.file}")
     protected File pomFile;
-    
+
     /**
-     * @parameter expression="${generate.pom.groupId}" default-value="${project.groupId}"
-     * @required
+     * The generated pom file groupId.
      */
-    protected String groupId;    
-    
+    @Parameter(property = PROPERTY_PREFIX + "groupId",
+            defaultValue = "${project.groupId}",
+            required = true)
+    protected String groupId;
+
     /**
-     * @parameter expression="${generate.pom.artifactId}" default-value="${project.artifactId}"
+     * The generated pom file artifactId.
      */
+    @Parameter(property = PROPERTY_PREFIX + "artifactId",
+            defaultValue = "${project.artifactId}")
     protected String artifactId;
-    
+
     /**
-     * @parameter expression="${generate.pom.version}" default-value="${project.version}"
+     * The generated pom file version.
      */
+    @Parameter(property = PROPERTY_PREFIX + "version",
+            defaultValue = "${project.version}")
     protected String version;
-    
+
     /**
-     * @parameter expression="${generate.pom.parent}"
+     * The generated pom file parent.
      */
+    @Parameter(property = PROPERTY_PREFIX + "parent")
     protected Parent parent;
-    
+
     /**
-     * @parameter expression="${generate.pom.description}" default-value="${project.description}"
+     * The generated pom file description.
      */
+    @Parameter(property = PROPERTY_PREFIX + "description")
     protected String description;
-    
+
     /**
-     * @parameter expression="${generate.pom.name}" default-value="${project.name}"
+     * The generated pom file name.
      */
+    @Parameter(property = PROPERTY_PREFIX + "name")
     protected String name;
-    
+
     /**
-     * @parameter expression="${generate.pom.scm}" default-value="${project.scm}"
+     * The generated pom file scm.
      */
+    @Parameter(property = PROPERTY_PREFIX + "scm",
+            defaultValue = "${project.scm}")
     protected Scm scm;
-    
+
     /**
-     * @parameter expression="${generate.pom.issueManagement}" default-value="${project.issueManagement}"
+     * The generated pom file issueManagement.
      */
+    @Parameter(property = PROPERTY_PREFIX + "issueManagement",
+            defaultValue = "${project.issueManagement}")
     protected IssueManagement issueManagement;
-    
+
     /**
-     * @parameter expression="${generate.pom.mailingLists}" default-value="${project.mailingLists}"
+     * The generated pom file mailingLists.
      */
+    @Parameter(property = PROPERTY_PREFIX + "mailingLists",
+            defaultValue = "${project.mailingLists}")
     protected List<MailingList> mailingLists;
-    
+
     /**
      *
-     * @parameter expression="${generate.pom.developers}" default-value="${project.developers}"
+     * The generated pom file developers.
      */
+    @Parameter(property = PROPERTY_PREFIX + "developers",
+            defaultValue = "${project.developers}")
     protected List<Developer> devevelopers;
-    
+
     /**
      *
-     * @parameter expression="${generate.pom.licenses}" default-value="${project.licenses}"
+     * The generated pom file licenses.
      */
+    @Parameter(property = PROPERTY_PREFIX + "licenses",
+            defaultValue = "${project.licenses}")
     protected List<License> licenses;
-    
+
     /**
      *
-     * @parameter expression="${generate.pom.organization}" default-value="${project.organization}"
+     * The generated pom file organization.
      */
+    @Parameter(property = PROPERTY_PREFIX + "organization",
+            defaultValue = "${project.organization}")
     protected Organization organization;
-    
+
     /**
-     *
-     * @parameter expression="${generate.pom.excludeDependencies}"
+     * Comma separated list of exclusions for project dependencies in the generated
+     * pom file.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeDependencies")
     protected String excludeDependencies;
-    
+
     /**
-     *
-     * @parameter expression="${generate.pom.excludeDependencyScope}" default-value="system,test"
+     * Comma separated list of scopes to excludes for project dependencies in the
+     * generated pom file.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeDependencyScope",
+            defaultValue = "system,test")
     protected String excludeDependencyScopes;
-    
+
     /**
-     *
-     * @parameter expression="${generate.pom.dependencies}" default-value="${project.dependencies}"
+     * Project dependencies to add to the generated pom file.
      */
+    @Parameter(property = PROPERTY_PREFIX + "dependencies",
+            defaultValue = "${project.dependencies}")
     protected List<Dependency> dependencies;
-    
+
     /**
-     *
-     * @parameter expression="${generate.pom.skip}" default-value="false"
+     * Skip this mojo.
      */
+    @Parameter(property = PROPERTY_PREFIX + "skip",
+            defaultValue = "false")
     protected Boolean skip;
-    
+
     /**
-     *
-     * @parameter expression="${generate.pom.attach}" default-value="false"
+     * Attach the generated pom to the current project.
      */
+    @Parameter(property = PROPERTY_PREFIX + "attach",
+            defaultValue = "false")
     protected Boolean attach;
-    
+
     /**
-     * @component
+     * Maven artifact resolver.
      */
+    @Component
     protected ArtifactResolver artifactResolver;
-    
+
     /**
-     * @component
+     * Maven repository manager.
      */
+    @Component
     protected RemoteRepositoryManager remoteRepositoryManager;
-    
 
    /**
-     * The entry point to Aether, i.e. the component doing all the work.
-     *
-     * @component
+     * The entry point to Aether.
      */
+    @Component
     private RepositorySystem repoSystem;
 
     /**
      * The current repository/network configuration of Maven.
-     *
-     * @parameter default-value="${repositorySystemSession}"
-     * @readonly
      */
+    @Parameter(defaultValue = "${repositorySystemSession}",
+            readonly = true)
     private RepositorySystemSession repoSession;
 
     /**
-     * The project's remote repositories to use for the resolution of project dependencies.
-     *
-     * @parameter default-value="${project.remoteProjectRepositories}"
-     * @readonly
+     * The project remote repositories to use for the resolution of project
+     * dependencies.
      */
+    @Parameter(defaultValue = "${project.remoteProjectRepositories}",
+            readonly = true)
     private List<RemoteRepository> projectRepos;
-    
+
     /**
-     * @component
+     * Maven model builder.
      */
+    @Component
     protected ModelBuilder modelBuilder;
-    
+
     private static boolean validateString(String str){
         return str != null && !str.isEmpty();
-    }    
+    }
 
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if(skip.booleanValue()){
+
+        if(skip){
             getLog().info("skipping...");
             return;
         }
-        
-        Model effectivePom = MavenUtils.resolveEffectiveModel(
-                modelBuilder,
-                repoSystem,
-                repoSession,
-                projectRepos,
-                pomFile);
-        
-        String input;
-        try {
-             input = PomHelper.readXmlFile(pomFile).toString();
-        } catch (IOException ex) {
-            throw new MojoExecutionException(ex.getMessage(),ex);
-        }
-        Model model = MavenUtils.readModel(input);
-        
+
+        Model model = readModel(pomFile);
+
         model.setGroupId(groupId);
         model.setArtifactId(artifactId);
         model.setVersion(version);  
         model.setDevelopers(devevelopers);
-        
-        if(parent != null 
-                && validateString(parent.getGroupId())
+
+        if(parent != null && validateString(parent.getGroupId())
                 && validateString(parent.getArtifactId())
                 && validateString(parent.getVersion())){
             model.setParent(parent);
         } else {
             model.setParent(null);
         }
-        
+
         model.setName(name);
         model.setDescription(description);
         model.setScm(scm);
@@ -273,9 +300,9 @@ public class GeneratePomMojo extends AbstractMojo {
         model.setLicenses(licenses);
         model.setOrganization(organization);
         model.setBuild(new Build());
-        
-        List<String> artifactIdExclusions = MavenUtils.getCommaSeparatedList(excludeDependencies);
-        List<String> scopeExclusions =  MavenUtils.getCommaSeparatedList(excludeDependencyScopes);
+
+        List<String> artifactIdExclusions = getCommaSeparatedList(excludeDependencies);
+        List<String> scopeExclusions =  getCommaSeparatedList(excludeDependencyScopes);
 
         for (Object o : dependencies.toArray()) {
             Dependency d = (Dependency)o;
@@ -284,25 +311,25 @@ public class GeneratePomMojo extends AbstractMojo {
                 dependencies.remove(d);
             }
         }
-        
+
         model.setDependencies(dependencies);
-        
-        File newPomFile = new File(outputDirectory,"pom.xml");
+
+        File newPomFile = new File(outputDirectory, "pom.xml");
         newPomFile.getParentFile().mkdirs();
-        
+
         FileWriter fw = null;
         try {
             // write comments from base pom
             fw = new FileWriter(newPomFile);
             String line;
-            BufferedReader br = new BufferedReader(new StringReader(input));
+            BufferedReader br = new BufferedReader(new FileReader(pomFile));
             while((line = br.readLine()) !=null && !line.startsWith("<project")){
                 fw.write(line);
                 fw.write('\n');
             }
-            
+
             // write new pom and skip first line (xml header)
-            String pom = MavenUtils.writePomToOutputStream(model).toString();
+            String pom = writePomToOutputStream(model).toString();
             int ind = pom.indexOf('\n');
             fw.write(pom.substring(ind));
         } catch (IOException ex) {
@@ -312,10 +339,10 @@ public class GeneratePomMojo extends AbstractMojo {
                 if (fw != null) {
                     fw.close();
                 }
-            } catch (Exception ex) {
+            } catch (IOException ex) {
             }
         }
-        
+
         if(attach){
             project.setFile(newPomFile);
         }

@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2017 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -46,11 +46,19 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+
 import org.codehaus.plexus.archiver.manager.ArchiverManager;
 import org.codehaus.plexus.util.FileUtils;
+
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.graph.Dependency;
@@ -61,32 +69,35 @@ import org.eclipse.aether.resolution.ArtifactDescriptorResult;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
-import org.glassfish.build.utils.MavenUtils;
+
+import static org.glassfish.build.utils.MavenUtils.unpack;
 
 /**
- * Resolves and unpack corresponding sources of project's dependencies
- *
- * @goal featuresets-dependencies
- * @requiresDependencyResolution compile
- * @phase process-resources
- * @requiresProject
+ * Resolves and unpack corresponding sources of project dependencies.
  *
  * @author Romain Grecourt
  */
+@Mojo(name = "featuresets-dependencies",
+      requiresProject = true,
+      requiresDependencyResolution = ResolutionScope.COMPILE,
+      defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
 public class FeatureSetsDependenciesMojo extends AbstractMojo {
+
+    private static final String PROPERTY_PREFIX = "gfbuild.featuresets.dependencies.";
+
     /**
-     * The entry point to Aether, i.e. the component doing all the work.
-     *
-     * @component
+     * The entry point to Aether.
      */
+    @Component
     private RepositorySystem repoSystem;
+
     /**
      * The current repository/network configuration of Maven.
-     *
-     * @parameter default-value="${repositorySystemSession}"
-     * @readonly
      */
+    @Parameter(defaultValue = "${repositorySystemSession}",
+            readonly = true)
     private RepositorySystemSession repoSession;
+
     /**
      * The project's remote repositories to use for the resolution of plugins
      * and their dependencies.
@@ -95,90 +106,106 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
      * @readonly
      */
     private List<RemoteRepository> remoteRepos;
+
     /**
-     * To look up Archiver/UnArchiver implementations
-     *
-     * @component
+     * To look up Archiver/UnArchiver implementations.
      */
+    @Component
     protected ArchiverManager archiverManager;
+
     /**
      * The maven project.
-     *
-     * @parameter expression="${project}"
-     * @required
-     * @readonly
      */
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
     protected MavenProject project;
+
     /**
-     * The directory where the files will be copied
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.stageDirectory}" default-value="${project.build.directory}/stage"
+     * The directory where the files will be copied.
      */
+    @Parameter(property = PROPERTY_PREFIX + "stageDirectory",
+               defaultValue = "${project.build.directory}/stage")
     protected File stageDirectory;
+
     /**
-     * Comma separated list of file extensions to include for copy
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.copyTypes}" default-value="jar,war,rar"
+     * Comma separated list of file extensions to include for copy.
      */
+    @Parameter(property = PROPERTY_PREFIX + "copyTypes",
+               defaultValue = "jar,war,rar")
     protected String copyTypes;
+
     /**
-     * Comma separated list of (g:)a(:v) to excludes for unpack
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.copyExcludes}" default-value=""
+     * Comma separated list of (g:)a(:v) to excludes for unpack.
      */
+    @Parameter(property = PROPERTY_PREFIX + "copyExcludes",
+            defaultValue = "")
     protected String copyExcludes;
+
     /**
-     * Comma separated list of file extensions to include for unpack
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.unpackTypes}" default-value="zip"
+     * Comma separated list of file extensions to include for unpack.
      */
+    @Parameter(property = PROPERTY_PREFIX + "unpackTypes",
+            defaultValue = "zip")
     protected String unpackTypes;
+
     /**
-     * Comma separated list of (g:)a(:v) to excludes for unpack
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.unpackExcludes}" default-value=""
+     * Comma separated list of (g:)a(:v) to excludes for unpack.
      */
+    @Parameter(property = PROPERTY_PREFIX + "unpackExcludes",
+            defaultValue = "")
     protected String unpackExcludes;
+
     /**
-     * @parameter expression="${gfbuild.featuresets.dependencies.includes}"
+     * Comma separated list of include patterns.
      */
+    @Parameter(property = PROPERTY_PREFIX + "includes",
+            defaultValue = "")
     private String includes;
+
     /**
-     * @parameter expression="${gfbuild.featuresets.dependencies.excludes}"
+     * Comma separated list of exclude patterns.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludes",
+            defaultValue = "")
     private String excludes;
+
     /**
-     * Scope to include. An Empty string indicates all scopes.
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.includeScope}" default-value="compile"
-     * @optional
+     * Scope to include.
+     * An Empty string indicates all scopes.
      */
+    @Parameter(property = PROPERTY_PREFIX + "includeScope",
+            defaultValue = "compile",
+            required = false)
     protected String includeScope;
+
     /**
-     * Scope to exclude. An Empty string indicates no scopes.
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.excludeScope}" default-value="test,system"
-     * @optional
+     * Scope to exclude.
+     * An Empty string indicates no scopes.
      */
+    @Parameter(property = PROPERTY_PREFIX + "excludeScope",
+            defaultValue = "test,system")
     protected String excludeScope;
+
     /**
      * The groupId of the feature sets to include.
-     *
-     * @parameter expression="${gfbuild.featuresets.dependencies.featureset.groupid.includes}" default-value=""
      */
+    @Parameter(property = PROPERTY_PREFIX + "featureset.groupid.includes",
+            defaultValue = "")
     protected String featureSetGroupIdIncludes;
+
     /**
-     * @parameter 
-     * expression="${gfbuild.featuresets.dependencies.skip}"
-     * default-value="false"
+     * Skip this mojo.
      */
+    @Parameter(property = PROPERTY_PREFIX + "skip",
+            defaultValue = "false")
     private boolean skip;
+
     /**
      * @parameter
      */    
     protected List<DependencyMapping> mappings;
 
     public static class DependencyMapping {
+
         private String groupId;
         private String artifactId;
         private String name;
@@ -241,7 +268,9 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
         return includeScope.contains(str) && !excludeScope.contains(str);
     }
 
-    private boolean isArtifactExcluded(List<String> excludes, org.eclipse.aether.artifact.Artifact artifact){
+    private boolean isArtifactExcluded(List<String> excludes,
+                                       org.eclipse.aether.artifact.Artifact artifact){
+
         for(String exclude : excludes){
             String[] gav = exclude.split(":");
             if(gav == null || gav.length == 0){
@@ -296,14 +325,13 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
             if (featureSetGroupIdIncludes_l.contains(artifact.getGroupId())) {
                 ArtifactDescriptorRequest descriptorRequest = new ArtifactDescriptorRequest();
                 descriptorRequest.setArtifact(new org.eclipse.aether.artifact.DefaultArtifact(
-                        artifact.getGroupId(),
-                        artifact.getArtifactId(),
-                        artifact.getClassifier(),
-                        artifact.getType(),
+                        artifact.getGroupId(), artifact.getArtifactId(),
+                        artifact.getClassifier(), artifact.getType(),
                         artifact.getVersion()));
                 descriptorRequest.setRepositories(remoteRepos);
                 try {
-                    ArtifactDescriptorResult result = repoSystem.readArtifactDescriptor(repoSession, descriptorRequest);
+                    ArtifactDescriptorResult result = repoSystem.
+                            readArtifactDescriptor(repoSession, descriptorRequest);
                     dependencies.addAll(result.getDependencies());
                 } catch (ArtifactDescriptorException ex) {
                     throw new MojoExecutionException(ex.getMessage(), ex);
@@ -326,7 +354,9 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
         // add project direct dependency
         for(Object _directDependency : project.getDependencies()){
             if(_directDependency instanceof org.apache.maven.model.Dependency){
-                org.apache.maven.model.Dependency directDependency = (org.apache.maven.model.Dependency) _directDependency;
+                org.apache.maven.model.Dependency directDependency =
+                        (org.apache.maven.model.Dependency) _directDependency;
+
                 // if the dependency is a feature set
                 // or not of proper scope
                 // skip
@@ -334,12 +364,11 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
                     || !isScopeIncluded(directDependency.getScope())){
                     continue;
                 }
+
                 ArtifactRequest request = new ArtifactRequest();
                 request.setArtifact(new org.eclipse.aether.artifact.DefaultArtifact(
-                        directDependency.getGroupId(),
-                        directDependency.getArtifactId(),
-                        directDependency.getClassifier(),
-                        directDependency.getType(),
+                        directDependency.getGroupId(), directDependency.getArtifactId(),
+                        directDependency.getClassifier(), directDependency.getType(),
                         directDependency.getVersion()));
                 request.setRepositories(remoteRepos);
                 dependenciesRequest.add(request);
@@ -349,7 +378,8 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
         // resolve all
         List<ArtifactResult> resolvedDependencies;
         try {
-            resolvedDependencies = repoSystem.resolveArtifacts(repoSession, dependenciesRequest);
+            resolvedDependencies = repoSystem.resolveArtifacts(repoSession,
+                    dependenciesRequest);
         } catch (ArtifactResolutionException ex) {
             throw new MojoExecutionException(ex.getMessage(), ex);
         }
@@ -360,12 +390,14 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
 
             File sourceFile = dependency.getArtifact().getFile();
             if (sourceFile == null) {
-                getLog().error("dependency "+dependency.getArtifact().toString()+", file is null");
+                getLog().error("dependency " + dependency.getArtifact().toString()
+                        + ", file is null");
                 continue;
             }
 
             if (sourceFile.getName().isEmpty()) {
-                getLog().info("dependency " + dependency.getArtifact().toString() + ": empty file name");
+                getLog().info("dependency " + dependency.getArtifact().toString()
+                        + ": empty file name");
                 continue;
             }
 
@@ -398,7 +430,8 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
                         mapping + "." + dependency.getArtifact().getExtension());
                 String relativeDestFile = destFile.getPath().substring(
                         project.getBasedir().getPath().length()+1);
-                getLog().info("Copying " + dependency.getArtifact() + " to " + relativeDestFile);
+                getLog().info("Copying " + dependency.getArtifact() + " to "
+                        + relativeDestFile);
                 try {
                     FileUtils.copyFile(sourceFile, destFile);
                 } catch (IOException ex) {
@@ -409,17 +442,12 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
             if (doUnpack) {
                 String mapping = getMapping(dependency.getArtifact());
                 File destDir = new File(stageDirectory,mapping);
-                String relativeDestDir = destDir.getPath().substring(
-                        project.getBasedir().getPath().length()+1);
-                getLog().info("Unpacking " + dependency.getArtifact() + " to " + relativeDestDir);
-                MavenUtils.unpack(
-                        sourceFile,
-                        destDir,
-                        includes,
-                        excludes,
-                        true,
-                        getLog(),
-                        archiverManager);
+                String relativeDestDir = destDir.getPath()
+                        .substring(project.getBasedir().getPath().length() + 1);
+                getLog().info("Unpacking " + dependency.getArtifact() + " to "
+                        + relativeDestDir);
+                unpack(sourceFile, destDir, includes, excludes, /* silent */ true,
+                        getLog(), archiverManager);
             }
         }
     }

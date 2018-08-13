@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -43,49 +43,62 @@ package org.glassfish.build;
 import java.io.File;
 import java.util.Iterator;
 import java.util.Properties;
+
+import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
+
+import org.apache.tools.ant.BuildEvent;
+import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.taskdefs.ExecTask;
 import org.apache.tools.ant.taskdefs.condition.Os;
 
 /**
- * Execute a process
- *
- * @goal exec
- * @phase process-resources
- * @requiresProject
- * @requiresDependencyResolution runtime
+ * Execute a command.
  *
  * @author Romain Grecourt
  */
-public class ExecMojo extends AbstractAntMojo {
+@Mojo(name = "exec",
+      requiresProject = true,
+      requiresDependencyResolution = ResolutionScope.RUNTIME,
+      defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
+public class ExecMojo extends AbstractMojo {
 
     /**
-     * executable to execute
-     *
-     * @parameter expression="${executable}"
+     * The maven project.
      */
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
+    private MavenProject project;
+
+    /**
+     * Executable to execute.
+     */
+    @Parameter(property = "executable")
     protected String executable;
 
     /**
-     * working dir
-     *
-     * @parameter expression="${workingDir}" default-value="${project.build.directory}"
+     * Working dir.
      */
+    @Parameter(property = "workingDir", defaultValue = "${project.build.directory}")
     protected File workingDir;
 
     /**
-     * command line argument
-     *
-     * @parameter expression="${commandlineArgs}"
+     * Command line argument.
      */
+    @Parameter(property = "commandlineArgs")
     protected String commandlineArgs;
 
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         Project antProject = new Project();
-        antProject.addBuildListener(this);
+        antProject.addBuildListener(new AntBuildListener());
 
         Properties mavenProperties = project.getProperties();
         Iterator it = mavenProperties.keySet().iterator();
@@ -110,8 +123,39 @@ public class ExecMojo extends AbstractAntMojo {
         exec.execute();
     }
 
-    @Override
-    String prefix() {
-        return "[exec]";
+    private class AntBuildListener implements BuildListener {
+
+        @Override
+        public void buildStarted(BuildEvent event) {
+        }
+
+        @Override
+        public void buildFinished(BuildEvent event) {
+        }
+
+        @Override
+        public void targetStarted(BuildEvent event) {
+        }
+
+        @Override
+        public void targetFinished(BuildEvent event) {
+        }
+
+        @Override
+        public void taskStarted(BuildEvent event) {
+        }
+
+        @Override
+        public void taskFinished(BuildEvent event) {
+        }
+
+        @Override
+        public void messageLogged(BuildEvent event) {
+            if (event.getPriority() < 3) {
+                getLog().info("[exec] " + event.getMessage());
+            } else {
+                getLog().debug("[exec] " + event.getMessage());
+            }
+        }
     }
 }
