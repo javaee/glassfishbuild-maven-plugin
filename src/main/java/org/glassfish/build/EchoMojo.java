@@ -50,8 +50,7 @@ import org.apache.maven.plugins.annotations.Parameter;
  * Echo a message.
  */
 @Mojo(name = "echo")
-public class EchoMojo extends AbstractMojo 
-{
+public class EchoMojo extends AbstractMojo {
     /**
      * Any String to print out.
      */

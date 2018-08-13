@@ -70,7 +70,7 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "outputFile",
             defaultValue = "${project.build.directory}/merged.properties")
     protected File outputFile;
-   
+
     /**
      * The files to merge.
      */
@@ -95,16 +95,16 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
         BufferedWriter writer=null;
 
         try {
-            
             String line;
             StringBuilder sb = new StringBuilder();
-                        
+
             if (inputFiles != null && inputFiles.length > 1) {
+
+                // Get contents of file
                 try {
                     File file = inputFiles[0];
-                    getLog().info("Reading input file:"+file.getAbsolutePath());
+                    getLog().info("Reading input file:" + file.getAbsolutePath());
                     br1 = new BufferedReader(new FileReader(file));
-                    // Get contents of file
                     while ((line = br1.readLine()) != null) {
                         sb.append(line);
                         sb.append(LINE_SEP);
@@ -117,10 +117,10 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
 
                 for (int i=1; i<inputFiles.length; i++) {
                     File file = inputFiles[i];
-                    getLog().info("Reading input file:"+file.getAbsolutePath());
+                    getLog().info("Reading input file:" + file.getAbsolutePath());
+                    // Get contents of input file and skip the comments
                     try {
                         br2 = new BufferedReader(new FileReader(file));
-                        // Get contents of input file and skip the comments
                         while ((line = br2.readLine()) != null) {
                             line = line.trim();
                             if (line.startsWith("#")) {
@@ -136,8 +136,8 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
                     }
                 }
 
+                // Initialize the writer and write the merged contents
                 try {
-                    // Initialize the writer and write the merged contents
                     writer = new BufferedWriter(new FileWriter(outputFile));
                     writer.write(sb.toString());
                     writer.flush();

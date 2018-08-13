@@ -98,8 +98,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     private RepositorySystemSession repoSession;
 
     /**
-     * The project's remote repositories to use for the resolution of plugins
-     * and their dependencies.
+     * The project remote repositories to use.
      *
      * @parameter default-value="${project.remoteProjectRepositories}"
      * @readonly

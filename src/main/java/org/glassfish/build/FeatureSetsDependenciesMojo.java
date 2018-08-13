@@ -99,8 +99,7 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
     private RepositorySystemSession repoSession;
 
     /**
-     * The project's remote repositories to use for the resolution of plugins
-     * and their dependencies.
+     * The project remote repositories to use.
      *
      * @parameter default-value="${project.remoteProjectRepositories}"
      * @readonly
@@ -108,7 +107,7 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
     private List<RemoteRepository> remoteRepos;
 
     /**
-     * To look up Archiver/UnArchiver implementations.
+     * Manager used to look up Archiver/UnArchiver implementations.
      */
     @Component
     protected ArchiverManager archiverManager;
