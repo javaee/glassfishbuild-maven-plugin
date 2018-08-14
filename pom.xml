@@ -52,7 +52,7 @@
     </parent>
     <groupId>org.glassfish.build</groupId>
     <artifactId>glassfishbuild-maven-plugin</artifactId>
-    <version>3.2.25-SNAPSHOT</version>
+    <version>3.2.25</version>
     <packaging>maven-plugin</packaging>
     <name>GlassFishBuild Maven Plugin</name>
 
@@ -84,7 +84,8 @@
       <connection>scm:git:git://github.com/javaee/glassfishbuild-maven-plugin.git</connection>
       <developerConnection>scm:git:git://github.com/javaee/glassfishbuild-maven-plugin.git</developerConnection>
       <url>https://github.com/javaee/glassfish</url>
-    </scm>
+      <tag>3.2.25</tag>
+  </scm>
 
     <developers>
         <developer>
@@ -96,7 +97,7 @@
 
     <properties>
         <maven.version>3.3.9</maven.version>
-        <release.arguments/>
+        <release.arguments />
     </properties>
 
     <build>
