@@ -66,19 +66,12 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.impl.RemoteRepositoryManager;
-import org.eclipse.aether.repository.RemoteRepository;
-
-import static org.glassfish.build.utils.MavenUtils.getCommaSeparatedList;
-import static org.glassfish.build.utils.MavenUtils.readModel;
-import static org.glassfish.build.utils.MavenUtils.writePomToOutputStream;
+import static org.glassfish.build.utils.MavenHelper.getCommaSeparatedList;
+import static org.glassfish.build.utils.MavenHelper.readModel;
+import static org.glassfish.build.utils.MavenHelper.writePomToOutputStream;
 
 /**
- * Generates a pom from another pom
- *
- * @author Romain Grecourt
+ * Generates a pom from another pom.
  */
 @Mojo(name = "generate-pom")
 public class GeneratePomMojo extends AbstractMojo {
@@ -231,32 +224,6 @@ public class GeneratePomMojo extends AbstractMojo {
      */
     @Component
     protected ArtifactResolver artifactResolver;
-
-    /**
-     * Maven repository manager.
-     */
-    @Component
-    protected RemoteRepositoryManager remoteRepositoryManager;
-
-   /**
-     * The entry point to Aether.
-     */
-    @Component
-    private RepositorySystem repoSystem;
-
-    /**
-     * The current repository/network configuration of Maven.
-     */
-    @Parameter(defaultValue = "${repositorySystemSession}",
-            readonly = true)
-    private RepositorySystemSession repoSession;
-
-    /**
-     * The project remote repositories to use.
-     */
-    @Parameter(defaultValue = "${project.remoteProjectRepositories}",
-            readonly = true)
-    private List<RemoteRepository> projectRepos;
 
     /**
      * Maven model builder.

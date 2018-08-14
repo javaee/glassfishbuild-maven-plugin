@@ -61,8 +61,6 @@ import org.apache.tools.ant.taskdefs.condition.Os;
 
 /**
  * Execute a command.
- *
- * @author Romain Grecourt
  */
 @Mojo(name = "exec",
       requiresProject = true,

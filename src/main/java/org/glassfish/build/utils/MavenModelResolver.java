@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Repository;
 import org.apache.maven.model.building.FileModelSource;
@@ -52,6 +53,7 @@ import org.apache.maven.model.resolution.InvalidRepositoryException;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.model.resolution.UnresolvableModelException;
 import org.apache.maven.repository.internal.ArtifactDescriptorUtils;
+
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -62,18 +64,23 @@ import org.eclipse.aether.artifact.DefaultArtifact;
 
 /**
  * A model resolver that can resolve remote artifacts during model resolution.
- *
  */
-public class MavenModelResolver implements ModelResolver {
+class MavenModelResolver implements ModelResolver {
 
     private final List<RemoteRepository> repositories;
     private final Set<String> repositoryIds;
     private final RepositorySystem system;
     private final RepositorySystemSession session;
 
-    public MavenModelResolver(RepositorySystem system,
-                              RepositorySystemSession session,
-                              List<RemoteRepository> remoteRepositories) {
+    /**
+     * Create a new {@code MavenModelResolver} instance.
+     * @param system repository system component
+     * @param session repository session component
+     * @param remoteRepositories remote repositories to use
+     */
+    MavenModelResolver(RepositorySystem system,
+                       RepositorySystemSession session,
+                       List<RemoteRepository> remoteRepositories) {
 
         this.system = system;
         this.session = session;
@@ -114,7 +121,7 @@ public class MavenModelResolver implements ModelResolver {
     public void addRepository(Repository repository)
             throws InvalidRepositoryException {
 
-        addRepository(repository, false);
+        addRepository(repository, /* replace */ false);
     }
 
     @Override
@@ -128,7 +135,7 @@ public class MavenModelResolver implements ModelResolver {
                                     String version)
             throws UnresolvableModelException {
 
-        Artifact artifact = new DefaultArtifact(groupId,artifactId, "pom", version);
+        Artifact artifact = new DefaultArtifact(groupId, artifactId, "pom", version);
         try {
             ArtifactRequest request = new ArtifactRequest(artifact, repositories,
                     /* context */ null);

@@ -57,14 +57,11 @@ import org.apache.maven.project.MavenProject;
 
 import org.apache.tools.ant.types.ZipFileSet;
 
-import static org.glassfish.build.utils.MavenUtils.createZip;
-import static org.glassfish.build.utils.MavenUtils.createZipFileSet;
+import static org.glassfish.build.utils.MavenHelper.createZip;
+import static org.glassfish.build.utils.MavenHelper.createZipFileSet;
 
 /**
- * 
  * Creates a zip file.
- *
- * @author Romain Grecourt
  */
 @Mojo(name = "zip",
         requiresDependencyResolution = ResolutionScope.RUNTIME,

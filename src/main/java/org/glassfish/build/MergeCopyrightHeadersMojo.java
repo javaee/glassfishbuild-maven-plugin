@@ -54,9 +54,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Merges two property files properly.
- *
- * @author Romain Grecourt
- * @author Sandeep Shrivastava
  */
 @Mojo(name = "merge-copyright-headers")
 public class MergeCopyrightHeadersMojo extends AbstractMojo {

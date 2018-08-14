@@ -54,16 +54,13 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.artifact.ProjectArtifactMetadata;
 
-import static org.glassfish.build.utils.MavenUtils.createArtifact;
-import static org.glassfish.build.utils.MavenUtils.createAttachedArtifacts;
-import static org.glassfish.build.utils.MavenUtils.getPomInTarget;
-import static org.glassfish.build.utils.MavenUtils.readModel;
+import static org.glassfish.build.utils.MavenHelper.createArtifact;
+import static org.glassfish.build.utils.MavenHelper.createAttachedArtifacts;
+import static org.glassfish.build.utils.MavenHelper.getPomInTarget;
+import static org.glassfish.build.utils.MavenHelper.readModel;
 
 /**
  * Guess artifacts from target directory and attach them to the project.
- * It does not require any phase to run, nor require any dependency resolution.
- *
- * @author Romain Grecourt
  */
 @Mojo(name = "attach-all-artifacts",
       requiresOnline = true)

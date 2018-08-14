@@ -60,15 +60,13 @@ import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactResult;
 
-import static org.glassfish.build.utils.MavenUtils.cleanToBeTokenizedString;
-import static org.glassfish.build.utils.MavenUtils.filterArtifacts;
-import static org.glassfish.build.utils.MavenUtils.resolveArtifact;
-import static org.glassfish.build.utils.MavenUtils.unpack;
+import static org.glassfish.build.utils.MavenHelper.cleanToBeTokenizedString;
+import static org.glassfish.build.utils.MavenHelper.filterArtifacts;
+import static org.glassfish.build.utils.MavenHelper.resolveArtifact;
+import static org.glassfish.build.utils.MavenHelper.unpack;
 
 /**
  * Resolves and unpack corresponding sources of project dependencies.
- *
- * @author Romain Grecourt
  */
 @Mojo(name = "unpack-sources",
         requiresDependencyResolution = ResolutionScope.RUNTIME,

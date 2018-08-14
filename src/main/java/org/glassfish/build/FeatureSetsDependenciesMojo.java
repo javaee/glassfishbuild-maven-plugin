@@ -70,12 +70,10 @@ import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 
-import static org.glassfish.build.utils.MavenUtils.unpack;
+import static org.glassfish.build.utils.MavenHelper.unpack;
 
 /**
  * Resolves and unpack corresponding sources of project dependencies.
- *
- * @author Romain Grecourt
  */
 @Mojo(name = "featuresets-dependencies",
       requiresProject = true,

@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.DefaultArtifactHandler;
@@ -63,7 +64,9 @@ import org.apache.maven.model.io.DefaultModelWriter;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.shared.artifact.filter.collection.*;
+
 import org.apache.tools.ant.types.ZipFileSet;
+
 import org.codehaus.plexus.archiver.ArchiverException;
 import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.manager.ArchiverManager;
@@ -73,6 +76,7 @@ import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.WriterFactory;
+
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
@@ -81,10 +85,9 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 
 /**
- *
- * @author Romain Grecourt
+ * Helper for common Maven Plugin tasks.
  */
-public class MavenUtils {
+public class MavenHelper {
 
     /**
      * Reads a given model
@@ -251,10 +254,10 @@ public class MavenUtils {
             throws MojoExecutionException {
 
         // resolving using finalName
-        Artifact artifact = getArtifactFile(dir,getFinalName(model),model);
+        Artifact artifact = getArtifactFile(dir, getFinalName(model), model);
         if(artifact == null){
             // resolving using artifactId
-            artifact = getArtifactFile(dir,model.getArtifactId(),model);
+            artifact = getArtifactFile(dir, model.getArtifactId(), model);
         }
         return artifact;
     }
@@ -267,7 +270,7 @@ public class MavenUtils {
      */
     public static File getPomInTarget(String dir) throws MojoExecutionException {
         // check for an existing .pom
-         List<File> poms = getFiles(dir, "*.pom","");
+         List<File> poms = getFiles(dir, /* includes */ "*.pom", /* excludes */ "");
          if(!poms.isEmpty()){
             return poms.get(0);
          }
@@ -277,25 +280,25 @@ public class MavenUtils {
     /**
      * Return the files contained in the directory, using inclusion and exclusion
      * ant patterns.
-     * @param dir the directory to scan
+     * @param dirPath the directory to scan
      * @param includes the includes pattern, comma separated
      * @param excludes the excludes pattern, comma separated
      * @return
      * @throws MojoExecutionException if an IO exception occurred
      */
-    public static List<File> getFiles(String dir,
+    public static List<File> getFiles(String dirPath,
                                       String includes,
                                       String excludes)
             throws MojoExecutionException{
 
-        if(dir == null || dir.isEmpty()){
+        if(dirPath == null || dirPath.isEmpty()){
             throw new IllegalArgumentException("dir is null or empty");
         }
 
-        File f = new File(dir);
-        if (f.exists() && f.isDirectory()) {
+        File dir = new File(dirPath);
+        if (dir.exists() && dir.isDirectory()) {
             try {
-                return FileUtils.getFiles(f, includes, excludes);
+                return FileUtils.getFiles(dir, includes, excludes);
             } catch (IOException ex) {
                 throw new MojoExecutionException(ex.getMessage(), ex);
             }
@@ -305,11 +308,11 @@ public class MavenUtils {
 
     /**
      * Creates an artifact instance for the supplied model.
-     * @param m the model
+     * @param model the model
      * @return the created artifact
      */
-    public static Artifact createArtifact(Model m) {
-        return createArtifact(m,m.getPackaging(),null);
+    public static Artifact createArtifact(Model model) {
+        return createArtifact(model, model.getPackaging(), /* classifier */ null);
     }
 
     /**
@@ -388,7 +391,7 @@ public class MavenUtils {
      * @throws IOException
      */
     public static void writePom(Model model, File buildDir) throws IOException {
-        writePom(model, buildDir, null);
+        writePom(model, buildDir, /* pomFileName */ null);
     }
 
     /**
@@ -411,7 +414,6 @@ public class MavenUtils {
         }
         File pomFile = new File(buildDir, pomFileName);
         new DefaultModelWriter().write(pomFile, null, model);
-        
         model.setPomFile(pomFile);
     }
 
@@ -425,7 +427,7 @@ public class MavenUtils {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try{
-            new DefaultModelWriter().write(baos, null, model);
+            new DefaultModelWriter().write(baos, /* options */ null, model);
             return new String(baos.toByteArray());
         } catch (IOException ex) {
             throw new MojoExecutionException(ex.getMessage(), ex);
@@ -442,7 +444,7 @@ public class MavenUtils {
             throws IOException {
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        new DefaultModelWriter().write(baos, null, model);
+        new DefaultModelWriter().write(baos, /* options */ null, model);
         return baos;
     }
 
@@ -661,6 +663,19 @@ public class MavenUtils {
         return msg.toString();
     }
 
+    /**
+     * Resolve a remote artifact using aether.
+     * @param groupId the group identifier of the artifact, may be {@code null}
+     * @param artifactId the artifact identifier of the artifact, may be {@code null}
+     * @param classifier the classifier of the artifact, may be {@code null}
+     * @param type the type of the artifact, may be {@code null}
+     * @param version the version of the artifact, may be {@code null}
+     * @param repoSystem the repository system component
+     * @param repoSession the repository session component
+     * @param remoteRepos the remote repositories to use
+     * @return the resolved artifact
+     * @throws MojoExecutionException if an error occurred while resolving the artifact
+     */
     public static ArtifactResult resolveArtifact(String groupId,
                                                  String artifactId,
                                                  String classifier,
@@ -741,6 +756,13 @@ public class MavenUtils {
         return sb.toString();
     }
 
+    /**
+     * Create an Ant {@code ZipFileSet}.
+     * @param dir the resource directory
+     * @param includes the list of include patterns
+     * @param excludes the list of exclude patterns
+     * @return the create {@code ZipFileSet}
+     */
     public static ZipFileSet createZipFileSet(File dir,
                                               List<String> includes,
                                               List<String> excludes) {
@@ -749,6 +771,13 @@ public class MavenUtils {
                 listToString(excludes));
     }
 
+    /**
+     * Create an Ant {@code ZipFileSet}.
+     * @param dir the resource directory
+     * @param includes the include patterns in comma separated list
+     * @param excludes the exclude patterns in comma separate list
+     * @return the create {@code ZipFileSet}
+     */
     public static ZipFileSet createZipFileSet(File dir,
                                               String includes,
                                               String excludes) {
@@ -765,6 +794,15 @@ public class MavenUtils {
         return fset;
     }
 
+    /**
+     * Create a zip file.
+     * @param props Ant project properties
+     * @param log Maven logger
+     * @param duplicate behavior for duplicate file, one of "add", "preserve" or "fail"
+     * @param fsets list of {@code ZipFileSet} that describe the resources to zip
+     * @param target the {@code File} instance for the zip file to create
+     * @return the target file
+     */
     public static File createZip(Properties props,
                                  Log log,
                                  String duplicate,

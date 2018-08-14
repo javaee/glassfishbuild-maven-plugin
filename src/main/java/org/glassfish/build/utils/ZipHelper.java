@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+
 import org.apache.maven.plugin.logging.Log;
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildListener;
@@ -51,8 +52,7 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.ZipFileSet;
 
 /**
- *
- * @author rgrecour
+ * Helper to create zip files using ant.
  */
 class ZipHelper implements BuildListener {
 
@@ -70,15 +70,27 @@ class ZipHelper implements BuildListener {
         static final ZipHelper INSTANCE = new ZipHelper();
     }
 
+    /**
+     * Get the Singleton instance for {@code ZipHelper}.
+     * @return the {@code ZipHelper} instance
+     */
     static ZipHelper getInstance() {
         return LazyHolder.INSTANCE;
     }
 
+    /**
+     * Create a zip file.
+     * @param properties Ant project properties
+     * @param log Maven logger
+     * @param duplicate behavior for duplicate file, one of "add", "preserve" or "fail"
+     * @param fsets list of {@code ZipFileSet} that describe the resources to zip
+     * @param target the {@code File} instance for the zip file to create
+     */
     void zip(Properties properties,
-                     Log log,
-                     String duplicate,
-                     List<ZipFileSet> fsets,
-                     File target) {
+             Log log,
+             String duplicate,
+             List<ZipFileSet> fsets,
+             File target) {
 
         this.log = log;
         Iterator it = properties.keySet().iterator();
@@ -99,7 +111,7 @@ class ZipHelper implements BuildListener {
         }
 
         if (fsets.isEmpty()) {
-            ZipFileSet zfs = MavenUtils.createZipFileSet(new File(""), "", "");
+            ZipFileSet zfs = MavenHelper.createZipFileSet(new File(""), "", "");
             // work around for 
             // http://issues.apache.org/bugzilla/show_bug.cgi?id=42122
             zfs.setDirMode("755");
