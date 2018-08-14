@@ -1,19 +1,19 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
  * and Distribution License("CDDL") (collectively, the "License").  You
  * may not use this file except in compliance with the License.  You can
  * obtain a copy of the License at
- * https://glassfish.java.net/public/CDDL+GPL_1_1.html
- * or packager/legal/LICENSE.txt.  See the License for the specific
+ * https://oss.oracle.com/licenses/CDDL+GPL-1.1
+ * or LICENSE.txt.  See the License for the specific
  * language governing permissions and limitations under the License.
  *
  * When distributing the software, include this License Header Notice in each
- * file and include the License file at packager/legal/LICENSE.txt.
+ * file and include the License file at LICENSE.txt.
  *
  * GPL Classpath Exception:
  * Oracle designates this particular file as subject to the "Classpath"
@@ -37,50 +37,8 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.build;
-
-import java.io.IOException;
-import javax.xml.stream.XMLStreamException;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.project.MavenProject;
-import org.codehaus.mojo.versions.api.PomHelper;
-import org.codehaus.mojo.versions.rewriting.ModifiedPomXMLEventReader;
-import org.glassfish.build.utils.MavenUtils;
 
 /**
- * Update a property
- *
- * @goal update-parent-version
- * @author Romain Grecourt
+ * GlassFish Build Maven Plugin Maven Mojos.
  */
-public class UpdateParentVersionMojo extends AbstractMojo {    
-
-    /**
-     * @parameter default-value="${project}"
-     * @required
-     * @readonly
-     */
-    private MavenProject project;
-
-    /**
-     * The new parent version
-     *
-     * @parameter expression="${parentVersion}"
-     */
-    private String parentVersion = null;
-
-    public void execute() throws MojoExecutionException, MojoFailureException {
-        try {
-            StringBuilder input = PomHelper.readXmlFile(project.getFile());
-            ModifiedPomXMLEventReader newPom = MavenUtils.newModifiedPomXER(input);
-            PomHelper.setProjectParentVersion(newPom, parentVersion);
-            MavenUtils.writeFile(project.getFile(), input);
-        } catch (XMLStreamException ex) {
-            getLog().error(ex);
-        } catch (IOException ex) {
-            getLog().error(ex);
-        }
-    }
-}
+package org.glassfish.build;

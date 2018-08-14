@@ -1,19 +1,19 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2013-2017 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
  * and Distribution License("CDDL") (collectively, the "License").  You
  * may not use this file except in compliance with the License.  You can
  * obtain a copy of the License at
- * https://glassfish.java.net/public/CDDL+GPL_1_1.html
- * or packager/legal/LICENSE.txt.  See the License for the specific
+ * https://oss.oracle.com/licenses/CDDL+GPL-1.1
+ * or LICENSE.txt.  See the License for the specific
  * language governing permissions and limitations under the License.
  *
  * When distributing the software, include this License Header Notice in each
- * file and include the License file at packager/legal/LICENSE.txt.
+ * file and include the License file at LICENSE.txt.
  *
  * GPL Classpath Exception:
  * Oracle designates this particular file as subject to the "Classpath"
@@ -44,12 +44,16 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.maven.model.Parent;
 import org.apache.maven.model.Repository;
 import org.apache.maven.model.building.FileModelSource;
 import org.apache.maven.model.building.ModelSource;
+import org.apache.maven.model.resolution.InvalidRepositoryException;
 import org.apache.maven.model.resolution.ModelResolver;
 import org.apache.maven.model.resolution.UnresolvableModelException;
 import org.apache.maven.repository.internal.ArtifactDescriptorUtils;
+
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -59,36 +63,54 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.artifact.DefaultArtifact;
 
 /**
- * Resolves an artifact even from remote repository during resolution of the model.
- *
- * The repositories are added to the resolution chain as found during processing of the POM file. Repository is added only if
- * there is no other repository with same id already defined.
- *
+ * A model resolver that can resolve remote artifacts during model resolution.
  */
-public class MavenModelResolver implements ModelResolver {
+final class MavenModelResolver implements ModelResolver {
 
-    private List<RemoteRepository> repositories;
-    private Set<String> repositoryIds;
+    /**
+     * List of remote repositories.
+     */
+    private final List<RemoteRepository> repositories;
 
-    private RepositorySystem system;
-    private RepositorySystemSession session;
+    /**
+     * The repository IDs of the remote repositories.
+     */
+    private final Set<String> repositoryIds;
 
-    public MavenModelResolver(
-            RepositorySystem system,
-            RepositorySystemSession session,
-            List<RemoteRepository> remoteRepositories) {
-        this.system = system;
-        this.session = session;
-        this.repositories = new ArrayList<RemoteRepository>(remoteRepositories);
+    /**
+     * The repository system component.
+     */
+    private final RepositorySystem system;
+
+    /**
+     * The repository session component.
+     */
+    private final RepositorySystemSession session;
+
+    /**
+     * Create a new {@code MavenModelResolver} instance.
+     * @param repoSystem repository system component
+     * @param repoSession repository session component
+     * @param remoteRepos remote repositories to use
+     */
+    MavenModelResolver(final RepositorySystem repoSystem,
+            final RepositorySystemSession repoSession,
+            final List<RemoteRepository> remoteRepos) {
+
+        this.system = repoSystem;
+        this.session = repoSession;
+        this.repositories = new ArrayList<RemoteRepository>(remoteRepos);
         this.repositoryIds = new HashSet<String>();
-
         for (RemoteRepository repository : repositories) {
             repositoryIds.add(repository.getId());
         }
-
     }
 
-    private MavenModelResolver(MavenModelResolver clone) {
+    /**
+     * Copy constructor.
+     * @param clone the instance to copy
+     */
+    private MavenModelResolver(final MavenModelResolver clone) {
         this.system = clone.system;
         this.session = clone.session;
         this.repositories = new ArrayList<RemoteRepository>(clone.repositories);
@@ -96,8 +118,11 @@ public class MavenModelResolver implements ModelResolver {
     }
 
     @Override
-    public void addRepository(Repository repository) {
-        if (repositoryIds.contains(repository.getId())) {
+    public void addRepository(final Repository repository,
+            final boolean replace)
+            throws InvalidRepositoryException {
+
+        if (!replace && repositoryIds.contains(repository.getId())) {
             return;
         }
         if (!repositoryIds.add(repository.getId())) {
@@ -113,32 +138,44 @@ public class MavenModelResolver implements ModelResolver {
     }
 
     @Override
+    public void addRepository(final Repository repository)
+            throws InvalidRepositoryException {
+
+        addRepository(repository, /* replace */ false);
+    }
+
+    @Override
     public ModelResolver newCopy() {
         return new MavenModelResolver(this);
     }
 
     @Override
-    public ModelSource resolveModel(String groupId, String artifactId, String version) throws UnresolvableModelException {
-        Artifact pomArtifact = new DefaultArtifact(
-                groupId,
-                artifactId,
-                "",
-                "pom",
+    public ModelSource resolveModel(final String groupId,
+                  final String artifactId,
+            final String version)
+            throws UnresolvableModelException {
+
+        Artifact artifact = new DefaultArtifact(groupId, artifactId, "pom",
                 version);
         try {
-            ArtifactRequest request = new ArtifactRequest(
-                    pomArtifact,
-                    repositories,
-                    null);
-            pomArtifact = system.resolveArtifact(session, request).getArtifact();
-
+            ArtifactRequest request = new ArtifactRequest(artifact,
+                    repositories, /* context */ null);
+            artifact = system.resolveArtifact(session, request).getArtifact();
         } catch (ArtifactResolutionException e) {
             throw new UnresolvableModelException(
-                    String.format("Failed to resolve POM for %s:%s:%s due to %s",
-                    groupId, artifactId, version, e.getMessage()),
-                    groupId, artifactId,
-                    version, e);
+                    String.format(
+                            "Failed to resolve POM for %s:%s:%s due to %s",
+                            groupId, artifactId, version, e.getMessage()),
+                    groupId, artifactId, version, e);
         }
-        return new FileModelSource(pomArtifact.getFile());
+        return new FileModelSource(artifact.getFile());
+    }
+
+    @Override
+    public ModelSource resolveModel(final Parent parent)
+            throws UnresolvableModelException {
+
+        return resolveModel(parent.getGroupId(), parent.getArtifactId(),
+                parent.getVersion());
     }
 }

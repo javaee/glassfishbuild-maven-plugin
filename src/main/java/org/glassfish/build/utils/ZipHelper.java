@@ -1,7 +1,7 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012-2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -37,99 +37,132 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package org.glassfish.build;
+package org.glassfish.build.utils;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
-
+import org.apache.maven.plugin.logging.Log;
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
-import org.apache.tools.ant.taskdefs.ExecTask;
-import org.apache.tools.ant.taskdefs.condition.Os;
+import org.apache.tools.ant.taskdefs.Zip;
+import org.apache.tools.ant.taskdefs.Zip.Duplicate;
+import org.apache.tools.ant.types.ZipFileSet;
 
 /**
- * Execute a command.
+ * Helper to create zip files using ant.
  */
-@Mojo(name = "exec",
-      requiresProject = true,
-      requiresDependencyResolution = ResolutionScope.RUNTIME,
-      defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
-public final class ExecMojo extends AbstractMojo {
+final class ZipHelper {
 
     /**
-     * The maven project.
+     * Create a new {@code ZipHelper} instance.
      */
-    @Parameter(defaultValue = "${project}", required = true, readonly = true)
-    private MavenProject project;
+    private ZipHelper() {
+    }
 
     /**
-     * Executable to execute.
+     * Lazy singleton holder.
      */
-    @Parameter(property = "executable")
-    private String executable;
+    private static class LazyHolder {
+
+        /**
+         * The singleton instance.
+         */
+        static final ZipHelper INSTANCE = new ZipHelper();
+    }
 
     /**
-     * Working dir.
+     * Get the Singleton instance for {@code ZipHelper}.
+     * @return the {@code ZipHelper} instance
      */
-    @Parameter(property = "workingDir",
-            defaultValue = "${project.build.directory}")
-    private File workingDir;
+    static ZipHelper getInstance() {
+        return LazyHolder.INSTANCE;
+    }
 
     /**
-     * Command line argument.
+     * Create a zip file.
+     * @param properties Ant project properties
+     * @param mavenLog Maven logger
+     * @param duplicate behavior for duplicate file, one of "add", "preserve"
+     * or "fail"
+     * @param fsets list of {@code ZipFileSet} that describe the resources to
+     * zip
+     * @param target the {@code File} instance for the zip file to create
      */
-    @Parameter(property = "commandlineArgs")
-    private String commandlineArgs;
-
-    @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
+    void zip(final Properties properties,
+            final Log mavenLog,
+            final String duplicate,
+            final List<ZipFileSet> fsets,
+            final File target) {
 
         Project antProject = new Project();
-        antProject.addBuildListener(new AntBuildListener());
-
-        Properties mavenProperties = project.getProperties();
-        Iterator it = mavenProperties.keySet().iterator();
+        antProject.addBuildListener(new AntBuildListener(mavenLog));
+        Iterator it = properties.keySet().iterator();
         while (it.hasNext()) {
             String key = (String) it.next();
-            antProject.setProperty(key, mavenProperties.getProperty(key));
-        }
-        ExecTask exec = new ExecTask();
-        exec.setProject(antProject);
-        exec.setDir(workingDir);
-
-        if (new Os("Windows").eval()
-                && !executable.endsWith(".bat")
-                && new File(executable + ".bat").exists()) {
-            executable += ".bat";
+            antProject.setProperty(key, properties.getProperty(key));
         }
 
-        exec.setExecutable(executable);
-        getLog().info("executable: " + executable);
-        exec.createArg().setLine(commandlineArgs);
-        getLog().info("commandLineArgs: " + commandlineArgs);
-        exec.execute();
+        Zip zip = new Zip();
+        zip.setProject(antProject);
+        zip.setDestFile(target);
+        Duplicate df = new Duplicate();
+        df.setValue(duplicate);
+        zip.setDuplicate(df);
+        mavenLog.info(String.format("[zip] duplicate: %s", duplicate));
+
+        List<ZipFileSet> filesets;
+        if (fsets == null) {
+            filesets = Collections.EMPTY_LIST;
+        } else {
+            filesets = fsets;
+        }
+
+        if (filesets.isEmpty()) {
+            ZipFileSet zfs = MavenHelper.createZipFileSet(new File(""), "", "");
+            // work around for
+            // http://issues.apache.org/bugzilla/show_bug.cgi?id=42122
+            zfs.setDirMode("755");
+            zfs.setFileMode("644");
+            filesets.add(zfs);
+        }
+
+        for (ZipFileSet fset : filesets) {
+            zip.addZipfileset(fset);
+            String desc = fset.getDescription();
+            if (desc != null && !desc.isEmpty()) {
+                mavenLog.info(String.format("[zip] %s", desc));
+            }
+        }
+        zip.executeMain();
     }
 
     /**
      * {@code BuilderListener} implementation to log Ant events.
      */
-    private class AntBuildListener implements BuildListener {
+    private static final class AntBuildListener implements BuildListener {
 
         /**
          * Maximum Event priority that is logged.
          */
         private static final int MAX_EVENT_PRIORITY = 3;
+
+        /**
+         * Maven logger.
+         */
+        private final Log log;
+
+        /**
+         * Create a new {@code AntBuildListener} instance.
+         * @param mavenLog Maven logger
+         */
+        private AntBuildListener(final Log mavenLog) {
+            this.log = mavenLog;
+        }
 
         @Override
         public void buildStarted(final BuildEvent event) {
@@ -158,9 +191,9 @@ public final class ExecMojo extends AbstractMojo {
         @Override
         public void messageLogged(final BuildEvent event) {
             if (event.getPriority() < MAX_EVENT_PRIORITY) {
-                getLog().info("[exec] " + event.getMessage());
+                log.info(String.format("[zip] %s", event.getMessage()));
             } else {
-                getLog().debug("[exec] " + event.getMessage());
+                log.debug(String.format("[zip] %s", event.getMessage()));
             }
         }
     }

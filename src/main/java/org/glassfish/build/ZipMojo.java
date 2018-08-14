@@ -1,19 +1,19 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2012 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012-2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
  * and Distribution License("CDDL") (collectively, the "License").  You
  * may not use this file except in compliance with the License.  You can
  * obtain a copy of the License at
- * https://glassfish.java.net/public/CDDL+GPL_1_1.html
- * or packager/legal/LICENSE.txt.  See the License for the specific
+ * https://oss.oracle.com/licenses/CDDL+GPL-1.1
+ * or LICENSE.txt.  See the License for the specific
  * language governing permissions and limitations under the License.
  *
  * When distributing the software, include this License Header Notice in each
- * file and include the License file at packager/legal/LICENSE.txt.
+ * file and include the License file at LICENSE.txt.
  *
  * GPL Classpath Exception:
  * Oracle designates this particular file as subject to the "Classpath"
@@ -44,163 +44,188 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import org.apache.maven.artifact.handler.ArtifactHandler;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+
 import org.apache.tools.ant.types.ZipFileSet;
-import org.glassfish.build.utils.MavenUtils;
+
+import static org.glassfish.build.utils.MavenHelper.createZip;
+import static org.glassfish.build.utils.MavenHelper.createZipFileSet;
 
 /**
- * 
- * Creates a zip file
- *
- * @goal zip
- * @phase package
- * @requiresProject
- * @requiresDependencyResolution runtime
- *
- * @author Romain Grecourt
+ * Creates a zip file.
  */
-public class ZipMojo extends AbstractMojo {
+@Mojo(name = "zip",
+        requiresDependencyResolution = ResolutionScope.RUNTIME,
+        defaultPhase = LifecyclePhase.PACKAGE,
+        requiresProject = true)
+public final class ZipMojo extends AbstractMojo {
+
+    /**
+     * Parameters property prefix.
+     */
+    private static final String PROPERTY_PREFIX = "gfzip.outputDirectory";
+
     /**
      * The maven project.
-     *
-     * @parameter expression="${project}" @required @readonly
      */
-    protected MavenProject project;
-    
+    @Parameter(defaultValue = "${project}", required = true, readonly = true)
+    private MavenProject project;
+
     /**
      * The directory where the zip will be created.
-     *
-     * @parameter expression="${gfzip.outputDirectory}" default-value="${project.build.directory}"
      */
-    protected File outputDirectory;
+    @Parameter(property = PROPERTY_PREFIX + "outputDirectory",
+            defaultValue = "${project.build.directory}")
+    private File outputDirectory;
 
     /**
      * The file name of the created zip.
-     *
-     * @parameter expression="${gfzip.finalName}" default-value="${project.build.finalName}"
      */
-    protected String finalName;
+    @Parameter(property = PROPERTY_PREFIX + "finalName",
+            defaultValue = "${project.build.finalName}")
+    private String finalName;
 
     /**
-     * behavior when a duplicate file is found ;
+     * behavior when a duplicate file is found.
      * Valid values are "add", "preserve", and "fail" ; default value is "add"
-     *
-     * @parameter expression="${gfzip.duplicate}" default-value="add"
      */
-    protected String duplicate;
+    @Parameter(property = PROPERTY_PREFIX + "duplicate",
+            defaultValue = "add")
+    private String duplicate;
 
     /**
-     * Filesets describe content to include in the zip
-     *
-     * @parameter expression="${gfzip.filesets}"
+     * Content to include in the zip.
      */
-    protected ZipFileSet[] filesets;
+    @Parameter(property = PROPERTY_PREFIX + "filesets")
+    private ZipFileSet[] filesets;
 
     /**
-     * dir the root of the directory tree of the default FileSet ;
+     * The root directory of the default FileSet.
      * Only when no fileset(s) provided.
-     * 
-     * @parameter expression="${gfzip.dir}" default-value="${project.build.directory}"
      */
-    protected File dir;
+    @Parameter(property = PROPERTY_PREFIX + "dir",
+            defaultValue = "${project.build.directory}")
+    private File dir;
 
     /**
-     * comma- or space-separated list of patterns of files that must be included ;
-     * all files are included when omitted ; Only when no fileset(s) provided.
-     *
-     * @parameter expression="${gfzip.includes}"
+     * Comma or space separated list of include patterns.
+     * all files are included when omitted ; Only when no fileset provided.
      */
-    protected String includes;
+    @Parameter(property = PROPERTY_PREFIX + "includes")
+    private String includes;
 
     /**
-     * comma- or space-separated list of patterns of files that must be included ;
-     * all files are included when omitted ; Only when no fileset(s) provided.
-     *
-     * @parameter expression="${gfzip.excludes}"
+     * Comma or space separated list of exclude patterns.
+     * all files are included when omitted ; Only when no fileset provided.
      */
-    protected String excludes;
-    
+    @Parameter(property = PROPERTY_PREFIX + "excludes")
+    private String excludes;
+
     /**
      * The extension of the generated file.
-     * 
-     * @parameter expression="${gfzip.extension}" default-value="zip"
      */
-    protected String extension;
-    
-    /**
-     * Attach the produced artifact
-     * 
-     * @parameter expression="${gfzip.attach}" default-value="true"
-     */
-    protected Boolean attach;
-    
+    @Parameter(property = PROPERTY_PREFIX + "extension",
+            defaultValue = "zip")
+    private String extension;
 
+    /**
+     * Attach the produced artifact.
+     */
+    @Parameter(property = PROPERTY_PREFIX + "attach",
+            defaultValue = "true")
+    private Boolean attach;
+
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         this.project.addCompileSourceRoot(null);
         List<ZipFileSet> fsets;
-        if(filesets != null && filesets.length >0){
+        if (filesets != null && filesets.length > 0) {
             fsets = Arrays.asList(filesets);
         } else {
             fsets = new ArrayList<ZipFileSet>();
-            fsets.add(MavenUtils.createZipFileSet(dir, includes, excludes));
+            fsets.add(createZipFileSet(dir, includes, excludes));
         }
 
-        File target = MavenUtils.createZip(
-                project.getProperties(),
-                getLog(),
-                duplicate,
-                fsets,
-                new File(outputDirectory, finalName + '.' + extension));
+        File target = createZip(project.getProperties(), getLog(),
+                duplicate, fsets, new File(outputDirectory,
+                        finalName + '.' + extension));
 
         if (attach) {
             project.getArtifact().setFile(target);
-            project.getArtifact().setArtifactHandler(new DistributionArtifactHandler(extension, project.getPackaging()));
+            project.getArtifact().setArtifactHandler(
+                    new DistributionArtifactHandler(extension,
+                            project.getPackaging()));
         }
     }
-    
-    private static class DistributionArtifactHandler implements ArtifactHandler {
 
-        private String extension;
-        private String packaging;
+    /**
+     * {@code ArtifactHandler} implementation.
+     */
+    private static final class DistributionArtifactHandler
+            implements ArtifactHandler {
 
-        public DistributionArtifactHandler() {
-            extension = "zip";
-            packaging = "glassfish-distribution";
+        /**
+         * Artifact file extension.
+         */
+        private final String extension;
+
+        /**
+         * Artifact packaging.
+         */
+        private final String packaging;
+
+        /**
+         * Create a new {@code DistributionArtifactHandler} instance.
+         * @param ext the artifact extension
+         * @param pkg the artifact packaging
+         */
+        private DistributionArtifactHandler(final String ext,
+                final String pkg) {
+            this.extension = ext;
+            this.packaging = pkg;
         }
 
-        public DistributionArtifactHandler(String extension, String packaging) {
-            this.extension = extension;
-        }
-
+        @Override
         public String getExtension() {
             return extension;
         }
 
+        @Override
         public String getDirectory() {
             return null;
         }
 
+        @Override
         public String getClassifier() {
             return null;
         }
 
+        @Override
         public String getPackaging() {
             return packaging;
         }
 
+        @Override
         public boolean isIncludesDependencies() {
             return false;
         }
 
+        @Override
         public String getLanguage() {
             return "java";
         }
 
+        @Override
         public boolean isAddedToClasspath() {
             return false;
         }
