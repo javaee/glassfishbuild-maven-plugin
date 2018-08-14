@@ -65,33 +65,52 @@ import org.eclipse.aether.artifact.DefaultArtifact;
 /**
  * A model resolver that can resolve remote artifacts during model resolution.
  */
-class MavenModelResolver implements ModelResolver {
+final class MavenModelResolver implements ModelResolver {
 
+    /**
+     * List of remote repositories.
+     */
     private final List<RemoteRepository> repositories;
+
+    /**
+     * The repository IDs of the remote repositories.
+     */
     private final Set<String> repositoryIds;
+
+    /**
+     * The repository system component.
+     */
     private final RepositorySystem system;
+
+    /**
+     * The repository session component.
+     */
     private final RepositorySystemSession session;
 
     /**
      * Create a new {@code MavenModelResolver} instance.
-     * @param system repository system component
-     * @param session repository session component
-     * @param remoteRepositories remote repositories to use
+     * @param repoSystem repository system component
+     * @param repoSession repository session component
+     * @param remoteRepos remote repositories to use
      */
-    MavenModelResolver(RepositorySystem system,
-                       RepositorySystemSession session,
-                       List<RemoteRepository> remoteRepositories) {
+    MavenModelResolver(final RepositorySystem repoSystem,
+            final RepositorySystemSession repoSession,
+            final List<RemoteRepository> remoteRepos) {
 
-        this.system = system;
-        this.session = session;
-        this.repositories = new ArrayList<RemoteRepository>(remoteRepositories);
+        this.system = repoSystem;
+        this.session = repoSession;
+        this.repositories = new ArrayList<RemoteRepository>(remoteRepos);
         this.repositoryIds = new HashSet<String>();
         for (RemoteRepository repository : repositories) {
             repositoryIds.add(repository.getId());
         }
     }
 
-    private MavenModelResolver(MavenModelResolver clone) {
+    /**
+     * Copy constructor.
+     * @param clone the instance to copy
+     */
+    private MavenModelResolver(final MavenModelResolver clone) {
         this.system = clone.system;
         this.session = clone.session;
         this.repositories = new ArrayList<RemoteRepository>(clone.repositories);
@@ -99,7 +118,8 @@ class MavenModelResolver implements ModelResolver {
     }
 
     @Override
-    public void addRepository(Repository repository, boolean replace)
+    public void addRepository(final Repository repository,
+            final boolean replace)
             throws InvalidRepositoryException {
 
         if (!replace && repositoryIds.contains(repository.getId())) {
@@ -118,7 +138,7 @@ class MavenModelResolver implements ModelResolver {
     }
 
     @Override
-    public void addRepository(Repository repository)
+    public void addRepository(final Repository repository)
             throws InvalidRepositoryException {
 
         addRepository(repository, /* replace */ false);
@@ -130,28 +150,29 @@ class MavenModelResolver implements ModelResolver {
     }
 
     @Override
-    public ModelSource resolveModel(String groupId,
-                                    String artifactId,
-                                    String version)
+    public ModelSource resolveModel(final String groupId,
+                  final String artifactId,
+            final String version)
             throws UnresolvableModelException {
 
-        Artifact artifact = new DefaultArtifact(groupId, artifactId, "pom", version);
+        Artifact artifact = new DefaultArtifact(groupId, artifactId, "pom",
+                version);
         try {
-            ArtifactRequest request = new ArtifactRequest(artifact, repositories,
-                    /* context */ null);
+            ArtifactRequest request = new ArtifactRequest(artifact,
+                    repositories, /* context */ null);
             artifact = system.resolveArtifact(session, request).getArtifact();
         } catch (ArtifactResolutionException e) {
             throw new UnresolvableModelException(
-                    String.format("Failed to resolve POM for %s:%s:%s due to %s",
-                    groupId, artifactId, version, e.getMessage()),
-                    groupId, artifactId,
-                    version, e);
+                    String.format(
+                            "Failed to resolve POM for %s:%s:%s due to %s",
+                            groupId, artifactId, version, e.getMessage()),
+                    groupId, artifactId, version, e);
         }
         return new FileModelSource(artifact.getFile());
     }
 
     @Override
-    public ModelSource resolveModel(Parent parent)
+    public ModelSource resolveModel(final Parent parent)
             throws UnresolvableModelException {
 
         return resolveModel(parent.getGroupId(), parent.getArtifactId(),

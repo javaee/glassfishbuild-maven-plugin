@@ -40,7 +40,7 @@
 package org.glassfish.build.utils;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -49,24 +49,29 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.tools.ant.BuildEvent;
 import org.apache.tools.ant.BuildListener;
 import org.apache.tools.ant.Project;
+import org.apache.tools.ant.taskdefs.Zip;
+import org.apache.tools.ant.taskdefs.Zip.Duplicate;
 import org.apache.tools.ant.types.ZipFileSet;
 
 /**
  * Helper to create zip files using ant.
  */
-class ZipHelper implements BuildListener {
+final class ZipHelper {
 
-    private final org.apache.tools.ant.taskdefs.Zip zip;
-    private final Project antProject;
-    private Log log;
-
+    /**
+     * Create a new {@code ZipHelper} instance.
+     */
     private ZipHelper() {
-        antProject = new Project();
-        antProject.addBuildListener((BuildListener) this);
-        zip = new org.apache.tools.ant.taskdefs.Zip();
     }
 
+    /**
+     * Lazy singleton holder.
+     */
     private static class LazyHolder {
+
+        /**
+         * The singleton instance.
+         */
         static final ZipHelper INSTANCE = new ZipHelper();
     }
 
@@ -81,84 +86,115 @@ class ZipHelper implements BuildListener {
     /**
      * Create a zip file.
      * @param properties Ant project properties
-     * @param log Maven logger
-     * @param duplicate behavior for duplicate file, one of "add", "preserve" or "fail"
-     * @param fsets list of {@code ZipFileSet} that describe the resources to zip
+     * @param mavenLog Maven logger
+     * @param duplicate behavior for duplicate file, one of "add", "preserve"
+     * or "fail"
+     * @param fsets list of {@code ZipFileSet} that describe the resources to
+     * zip
      * @param target the {@code File} instance for the zip file to create
      */
-    void zip(Properties properties,
-             Log log,
-             String duplicate,
-             List<ZipFileSet> fsets,
-             File target) {
+    void zip(final Properties properties,
+            final Log mavenLog,
+            final String duplicate,
+            final List<ZipFileSet> fsets,
+            final File target) {
 
-        this.log = log;
+        Project antProject = new Project();
+        antProject.addBuildListener(new AntBuildListener(mavenLog));
         Iterator it = properties.keySet().iterator();
         while (it.hasNext()) {
             String key = (String) it.next();
             antProject.setProperty(key, properties.getProperty(key));
         }
+
+        Zip zip = new Zip();
         zip.setProject(antProject);
         zip.setDestFile(target);
-        org.apache.tools.ant.taskdefs.Zip.Duplicate df
-                = new org.apache.tools.ant.taskdefs.Zip.Duplicate();
+        Duplicate df = new Duplicate();
         df.setValue(duplicate);
         zip.setDuplicate(df);
-        log.info(String.format("[zip] duplicate: %s", duplicate));
+        mavenLog.info(String.format("[zip] duplicate: %s", duplicate));
 
+        List<ZipFileSet> filesets;
         if (fsets == null) {
-            fsets = new ArrayList<ZipFileSet>();
+            filesets = Collections.EMPTY_LIST;
+        } else {
+            filesets = fsets;
         }
 
-        if (fsets.isEmpty()) {
+        if (filesets.isEmpty()) {
             ZipFileSet zfs = MavenHelper.createZipFileSet(new File(""), "", "");
-            // work around for 
+            // work around for
             // http://issues.apache.org/bugzilla/show_bug.cgi?id=42122
             zfs.setDirMode("755");
             zfs.setFileMode("644");
-            fsets.add(zfs);
+            filesets.add(zfs);
         }
 
-        for (ZipFileSet fset : fsets) {
+        for (ZipFileSet fset : filesets) {
             zip.addZipfileset(fset);
             String desc = fset.getDescription();
             if (desc != null && !desc.isEmpty()) {
-                log.info(String.format("[zip] %s", desc));
+                mavenLog.info(String.format("[zip] %s", desc));
             }
         }
         zip.executeMain();
     }
 
-    @Override
-    public void buildStarted(BuildEvent event) {
-    }
+    /**
+     * {@code BuilderListener} implementation to log Ant events.
+     */
+    private static final class AntBuildListener implements BuildListener {
 
-    @Override
-    public void buildFinished(BuildEvent event) {
-    }
+        /**
+         * Maximum Event priority that is logged.
+         */
+        private static final int MAX_EVENT_PRIORITY = 3;
 
-    @Override
-    public void targetStarted(BuildEvent event) {
-    }
+        /**
+         * Maven logger.
+         */
+        private final Log log;
 
-    @Override
-    public void targetFinished(BuildEvent event) {
-    }
+        /**
+         * Create a new {@code AntBuildListener} instance.
+         * @param mavenLog Maven logger
+         */
+        private AntBuildListener(final Log mavenLog) {
+            this.log = mavenLog;
+        }
 
-    @Override
-    public void taskStarted(BuildEvent event) {
-    }
+        @Override
+        public void buildStarted(final BuildEvent event) {
+        }
 
-    @Override
-    public void taskFinished(BuildEvent event) {
-    }
+        @Override
+        public void buildFinished(final BuildEvent event) {
+        }
 
-    @Override
-    public void messageLogged(BuildEvent event) {
-        if (event.getPriority() < 3) {
-            log.info(String.format("[zip] %s", event.getMessage()));
-        } else {
-            log.debug(String.format("[zip] %s", event.getMessage()));
+        @Override
+        public void targetStarted(final BuildEvent event) {
+        }
+
+        @Override
+        public void targetFinished(final BuildEvent event) {
+        }
+
+        @Override
+        public void taskStarted(final BuildEvent event) {
+        }
+
+        @Override
+        public void taskFinished(final BuildEvent event) {
+        }
+
+        @Override
+        public void messageLogged(final BuildEvent event) {
+            if (event.getPriority() < MAX_EVENT_PRIORITY) {
+                log.info(String.format("[zip] %s", event.getMessage()));
+            } else {
+                log.debug(String.format("[zip] %s", event.getMessage()));
+            }
         }
     }
 }

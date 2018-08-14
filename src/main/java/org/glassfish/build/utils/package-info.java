@@ -1,14 +1,14 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 2008-2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
  * and Distribution License("CDDL") (collectively, the "License").  You
  * may not use this file except in compliance with the License.  You can
  * obtain a copy of the License at
- * https://glassfish.dev.java.net/public/CDDL+GPL_1_1.html
+ * https://glassfish.java.net/public/CDDL+GPL_1_1.html
  * or packager/legal/LICENSE.txt.  See the License for the specific
  * language governing permissions and limitations under the License.
  *
@@ -38,31 +38,7 @@
  * holder.
  */
 
-package org.glassfish.build;
-
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-
 /**
- * Echo a message.
+ * GlassFish Build Maven Plugin Utilities.
  */
-@Mojo(name = "echo")
-public final class EchoMojo extends AbstractMojo {
-
-    /**
-     * Any String to print out.
-     */
-    @Parameter(property = "message")
-    private String message;
-
-    @Override
-    @SuppressWarnings("checkstyle:LineLength")
-    public void execute() throws MojoExecutionException,  MojoFailureException {
-        getLog().info("------------------------------------------------------------------------");
-        getLog().info(message);
-        getLog().info("------------------------------------------------------------------------");
-    }
-}
+package org.glassfish.build.utils;

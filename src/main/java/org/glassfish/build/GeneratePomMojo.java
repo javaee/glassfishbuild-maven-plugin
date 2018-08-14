@@ -46,7 +46,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Developer;
@@ -57,25 +56,26 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.Organization;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.Scm;
-import org.apache.maven.model.building.ModelBuilder;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 import static org.glassfish.build.utils.MavenHelper.getCommaSeparatedList;
+import static org.glassfish.build.utils.MavenHelper.modelAsString;
 import static org.glassfish.build.utils.MavenHelper.readModel;
-import static org.glassfish.build.utils.MavenHelper.writePomToOutputStream;
 
 /**
  * Generates a pom from another pom.
  */
 @Mojo(name = "generate-pom")
-public class GeneratePomMojo extends AbstractMojo {
+public final class GeneratePomMojo extends AbstractMojo {
 
+    /**
+     * Parameters property prefix.
+     */
     private static final String PROPERTY_PREFIX = "generate.pom.";
 
     /**
@@ -89,14 +89,14 @@ public class GeneratePomMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "outputDirectory",
                defaultValue = "${project.build.directory}")
-    protected File outputDirectory;
+    private File outputDirectory;
 
     /**
      * The input pom file.
      */
     @Parameter(property = PROPERTY_PREFIX + "pomFile",
             defaultValue = "${project.file}")
-    protected File pomFile;
+    private File pomFile;
 
     /**
      * The generated pom file groupId.
@@ -104,60 +104,60 @@ public class GeneratePomMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "groupId",
             defaultValue = "${project.groupId}",
             required = true)
-    protected String groupId;
+    private String groupId;
 
     /**
      * The generated pom file artifactId.
      */
     @Parameter(property = PROPERTY_PREFIX + "artifactId",
             defaultValue = "${project.artifactId}")
-    protected String artifactId;
+    private String artifactId;
 
     /**
      * The generated pom file version.
      */
     @Parameter(property = PROPERTY_PREFIX + "version",
             defaultValue = "${project.version}")
-    protected String version;
+    private String version;
 
     /**
      * The generated pom file parent.
      */
     @Parameter(property = PROPERTY_PREFIX + "parent")
-    protected Parent parent;
+    private Parent parent;
 
     /**
      * The generated pom file description.
      */
     @Parameter(property = PROPERTY_PREFIX + "description")
-    protected String description;
+    private String description;
 
     /**
      * The generated pom file name.
      */
     @Parameter(property = PROPERTY_PREFIX + "name")
-    protected String name;
+    private String name;
 
     /**
      * The generated pom file scm.
      */
     @Parameter(property = PROPERTY_PREFIX + "scm",
             defaultValue = "${project.scm}")
-    protected Scm scm;
+    private Scm scm;
 
     /**
      * The generated pom file issueManagement.
      */
     @Parameter(property = PROPERTY_PREFIX + "issueManagement",
             defaultValue = "${project.issueManagement}")
-    protected IssueManagement issueManagement;
+    private IssueManagement issueManagement;
 
     /**
      * The generated pom file mailingLists.
      */
     @Parameter(property = PROPERTY_PREFIX + "mailingLists",
             defaultValue = "${project.mailingLists}")
-    protected List<MailingList> mailingLists;
+    private List<MailingList> mailingLists;
 
     /**
      *
@@ -165,7 +165,7 @@ public class GeneratePomMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "developers",
             defaultValue = "${project.developers}")
-    protected List<Developer> devevelopers;
+    private List<Developer> devevelopers;
 
     /**
      *
@@ -173,7 +173,7 @@ public class GeneratePomMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "licenses",
             defaultValue = "${project.licenses}")
-    protected List<License> licenses;
+    private List<License> licenses;
 
     /**
      *
@@ -181,64 +181,57 @@ public class GeneratePomMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "organization",
             defaultValue = "${project.organization}")
-    protected Organization organization;
+    private Organization organization;
 
     /**
-     * Comma separated list of exclusions for project dependencies in the generated
-     * pom file.
+     * Comma separated list of exclusions for project dependencies in the
+     * generated pom file.
      */
     @Parameter(property = PROPERTY_PREFIX + "excludeDependencies")
-    protected String excludeDependencies;
+    private String excludeDependencies;
 
     /**
-     * Comma separated list of scopes to excludes for project dependencies in the
-     * generated pom file.
+     * Comma separated list of scopes to excludes for project dependencies in
+     * the generated pom file.
      */
     @Parameter(property = PROPERTY_PREFIX + "excludeDependencyScope",
             defaultValue = "system,test")
-    protected String excludeDependencyScopes;
+    private String excludeDependencyScopes;
 
     /**
      * Project dependencies to add to the generated pom file.
      */
     @Parameter(property = PROPERTY_PREFIX + "dependencies",
             defaultValue = "${project.dependencies}")
-    protected List<Dependency> dependencies;
+    private List<Dependency> dependencies;
 
     /**
      * Skip this mojo.
      */
     @Parameter(property = PROPERTY_PREFIX + "skip",
             defaultValue = "false")
-    protected Boolean skip;
+    private Boolean skip;
 
     /**
      * Attach the generated pom to the current project.
      */
     @Parameter(property = PROPERTY_PREFIX + "attach",
             defaultValue = "false")
-    protected Boolean attach;
+    private Boolean attach;
 
     /**
-     * Maven artifact resolver.
+     * Validate that a {@code String} is non {@code null} and non empty.
+     * @param str the {@code String} to validate
+     * @return {@code true} if str is valid, {@code false} otherwise
      */
-    @Component
-    protected ArtifactResolver artifactResolver;
-
-    /**
-     * Maven model builder.
-     */
-    @Component
-    protected ModelBuilder modelBuilder;
-
-    private static boolean validateString(String str){
+    private static boolean validateString(final String str) {
         return str != null && !str.isEmpty();
     }
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
-        if(skip){
+        if (skip) {
             getLog().info("skipping...");
             return;
         }
@@ -247,12 +240,12 @@ public class GeneratePomMojo extends AbstractMojo {
 
         model.setGroupId(groupId);
         model.setArtifactId(artifactId);
-        model.setVersion(version);  
+        model.setVersion(version);
         model.setDevelopers(devevelopers);
 
-        if(parent != null && validateString(parent.getGroupId())
+        if (parent != null && validateString(parent.getGroupId())
                 && validateString(parent.getArtifactId())
-                && validateString(parent.getVersion())){
+                && validateString(parent.getVersion())) {
             model.setParent(parent);
         } else {
             model.setParent(null);
@@ -267,11 +260,13 @@ public class GeneratePomMojo extends AbstractMojo {
         model.setOrganization(organization);
         model.setBuild(new Build());
 
-        List<String> artifactIdExclusions = getCommaSeparatedList(excludeDependencies);
-        List<String> scopeExclusions =  getCommaSeparatedList(excludeDependencyScopes);
+        List<String> artifactIdExclusions = getCommaSeparatedList(
+                excludeDependencies);
+        List<String> scopeExclusions =  getCommaSeparatedList(
+                excludeDependencyScopes);
 
         for (Object o : dependencies.toArray()) {
-            Dependency d = (Dependency)o;
+            Dependency d = (Dependency) o;
             if (artifactIdExclusions.contains(d.getArtifactId())
                     || scopeExclusions.contains(d.getScope())) {
                 dependencies.remove(d);
@@ -289,17 +284,21 @@ public class GeneratePomMojo extends AbstractMojo {
             fw = new FileWriter(newPomFile);
             String line;
             BufferedReader br = new BufferedReader(new FileReader(pomFile));
-            while((line = br.readLine()) !=null && !line.startsWith("<project")){
+            while (true) {
+                line = br.readLine();
+                if (line == null || line.startsWith("<project")) {
+                    break;
+                }
                 fw.write(line);
                 fw.write('\n');
             }
 
             // write new pom and skip first line (xml header)
-            String pom = writePomToOutputStream(model).toString();
+            String pom = modelAsString(model);
             int ind = pom.indexOf('\n');
             fw.write(pom.substring(ind));
         } catch (IOException ex) {
-            throw new MojoExecutionException(ex.getMessage(),ex);
+            throw new MojoExecutionException(ex.getMessage(), ex);
         } finally {
             try {
                 if (fw != null) {
@@ -309,7 +308,7 @@ public class GeneratePomMojo extends AbstractMojo {
             }
         }
 
-        if(attach){
+        if (attach) {
             project.setFile(newPomFile);
         }
     }

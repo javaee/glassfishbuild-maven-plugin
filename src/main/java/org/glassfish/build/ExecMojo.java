@@ -66,7 +66,7 @@ import org.apache.tools.ant.taskdefs.condition.Os;
       requiresProject = true,
       requiresDependencyResolution = ResolutionScope.RUNTIME,
       defaultPhase = LifecyclePhase.PROCESS_RESOURCES)
-public class ExecMojo extends AbstractMojo {
+public final class ExecMojo extends AbstractMojo {
 
     /**
      * The maven project.
@@ -78,19 +78,20 @@ public class ExecMojo extends AbstractMojo {
      * Executable to execute.
      */
     @Parameter(property = "executable")
-    protected String executable;
+    private String executable;
 
     /**
      * Working dir.
      */
-    @Parameter(property = "workingDir", defaultValue = "${project.build.directory}")
-    protected File workingDir;
+    @Parameter(property = "workingDir",
+            defaultValue = "${project.build.directory}")
+    private File workingDir;
 
     /**
      * Command line argument.
      */
     @Parameter(property = "commandlineArgs")
-    protected String commandlineArgs;
+    private String commandlineArgs;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -100,7 +101,7 @@ public class ExecMojo extends AbstractMojo {
 
         Properties mavenProperties = project.getProperties();
         Iterator it = mavenProperties.keySet().iterator();
-        while(it.hasNext()){
+        while (it.hasNext()) {
             String key = (String) it.next();
             antProject.setProperty(key, mavenProperties.getProperty(key));
         }
@@ -108,48 +109,56 @@ public class ExecMojo extends AbstractMojo {
         exec.setProject(antProject);
         exec.setDir(workingDir);
 
-        if(new Os("Windows").eval()
+        if (new Os("Windows").eval()
                 && !executable.endsWith(".bat")
-                && new File(executable+".bat").exists()){
+                && new File(executable + ".bat").exists()) {
             executable += ".bat";
         }
-        exec.setExecutable(executable);
-        getLog().info("executable: "+executable);
-        exec.createArg().setLine(commandlineArgs);
-        getLog().info("commandLineArgs: "+commandlineArgs);
 
+        exec.setExecutable(executable);
+        getLog().info("executable: " + executable);
+        exec.createArg().setLine(commandlineArgs);
+        getLog().info("commandLineArgs: " + commandlineArgs);
         exec.execute();
     }
 
+    /**
+     * {@code BuilderListener} implementation to log Ant events.
+     */
     private class AntBuildListener implements BuildListener {
 
+        /**
+         * Maximum Event priority that is logged.
+         */
+        private static final int MAX_EVENT_PRIORITY = 3;
+
         @Override
-        public void buildStarted(BuildEvent event) {
+        public void buildStarted(final BuildEvent event) {
         }
 
         @Override
-        public void buildFinished(BuildEvent event) {
+        public void buildFinished(final BuildEvent event) {
         }
 
         @Override
-        public void targetStarted(BuildEvent event) {
+        public void targetStarted(final BuildEvent event) {
         }
 
         @Override
-        public void targetFinished(BuildEvent event) {
+        public void targetFinished(final BuildEvent event) {
         }
 
         @Override
-        public void taskStarted(BuildEvent event) {
+        public void taskStarted(final BuildEvent event) {
         }
 
         @Override
-        public void taskFinished(BuildEvent event) {
+        public void taskFinished(final BuildEvent event) {
         }
 
         @Override
-        public void messageLogged(BuildEvent event) {
-            if (event.getPriority() < 3) {
+        public void messageLogged(final BuildEvent event) {
+            if (event.getPriority() < MAX_EVENT_PRIORITY) {
                 getLog().info("[exec] " + event.getMessage());
             } else {
                 getLog().debug("[exec] " + event.getMessage());

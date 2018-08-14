@@ -64,7 +64,7 @@ import static org.glassfish.build.utils.MavenHelper.readModel;
  */
 @Mojo(name = "attach-all-artifacts",
       requiresOnline = true)
-public class AttachAllArtifactsMojo extends AbstractMojo {
+public final class AttachAllArtifactsMojo extends AbstractMojo {
 
     /**
      * The maven project.
@@ -95,16 +95,16 @@ public class AttachAllArtifactsMojo extends AbstractMojo {
 
         // check for an existing .pom under target
         File targetPom = getPomInTarget(project.getBuild().getDirectory());
-        if(targetPom != null){
+        if (targetPom != null) {
             pomFile = targetPom;
         }
 
         // if supplied pomFile is invalid, default to the project's pom
-        if(pomFile == null || !pomFile.exists()){
+        if (pomFile == null || !pomFile.exists()) {
             pomFile = project.getFile();
         }
 
-        if(!pomFile.exists()){
+        if (!pomFile.exists()) {
             getLog().info("Skipping as there is no model to read from");
             return;
         }
@@ -113,20 +113,23 @@ public class AttachAllArtifactsMojo extends AbstractMojo {
         Model model = readModel(pomFile);
 
         // create the project artifact manually
-        Artifact artifact = createArtifact(project.getBuild().getDirectory(), model);
-        if(artifact == null){
-            getLog().info("Skipping as there is no file found for this artifact");
+        Artifact artifact = createArtifact(project.getBuild().getDirectory(),
+                model);
+        if (artifact == null) {
+            getLog().info(
+                    "Skipping as there is no file found for this artifact");
             return;
         }
 
         // create the project attached artifacts manually
-        List<Artifact> attachedArtifacts = 
+        List<Artifact> attachedArtifacts =
                 createAttachedArtifacts(project.getBuild().getDirectory(),
                         artifact, model);
 
         // add metadata to the project if not a "pom" type
         if (!"pom".equals(model.getPackaging())) {
-            ArtifactMetadata metadata = new ProjectArtifactMetadata(artifact, pomFile);
+            ArtifactMetadata metadata = new ProjectArtifactMetadata(artifact,
+                    pomFile);
             artifact.addMetadata(metadata);
         }
 

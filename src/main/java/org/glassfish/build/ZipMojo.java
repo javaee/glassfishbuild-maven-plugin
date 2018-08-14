@@ -67,8 +67,11 @@ import static org.glassfish.build.utils.MavenHelper.createZipFileSet;
         requiresDependencyResolution = ResolutionScope.RUNTIME,
         defaultPhase = LifecyclePhase.PACKAGE,
         requiresProject = true)
-public class ZipMojo extends AbstractMojo {
+public final class ZipMojo extends AbstractMojo {
 
+    /**
+     * Parameters property prefix.
+     */
     private static final String PROPERTY_PREFIX = "gfzip.outputDirectory";
 
     /**
@@ -82,14 +85,14 @@ public class ZipMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "outputDirectory",
             defaultValue = "${project.build.directory}")
-    protected File outputDirectory;
+    private File outputDirectory;
 
     /**
      * The file name of the created zip.
      */
     @Parameter(property = PROPERTY_PREFIX + "finalName",
             defaultValue = "${project.build.finalName}")
-    protected String finalName;
+    private String finalName;
 
     /**
      * behavior when a duplicate file is found.
@@ -97,13 +100,13 @@ public class ZipMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "duplicate",
             defaultValue = "add")
-    protected String duplicate;
+    private String duplicate;
 
     /**
      * Content to include in the zip.
      */
     @Parameter(property = PROPERTY_PREFIX + "filesets")
-    protected ZipFileSet[] filesets;
+    private ZipFileSet[] filesets;
 
     /**
      * The root directory of the default FileSet.
@@ -111,42 +114,42 @@ public class ZipMojo extends AbstractMojo {
      */
     @Parameter(property = PROPERTY_PREFIX + "dir",
             defaultValue = "${project.build.directory}")
-    protected File dir;
+    private File dir;
 
     /**
-     * Comma- or space-separated list of patterns of files that must be included.
-     * all files are included when omitted ; Only when no fileset(s) provided.
+     * Comma or space separated list of include patterns.
+     * all files are included when omitted ; Only when no fileset provided.
      */
     @Parameter(property = PROPERTY_PREFIX + "includes")
-    protected String includes;
+    private String includes;
 
     /**
-     * Comma- or space-separated list of patterns of files that must be included.
-     * all files are included when omitted ; Only when no fileset(s) provided.
+     * Comma or space separated list of exclude patterns.
+     * all files are included when omitted ; Only when no fileset provided.
      */
     @Parameter(property = PROPERTY_PREFIX + "excludes")
-    protected String excludes;
-    
+    private String excludes;
+
     /**
      * The extension of the generated file.
      */
     @Parameter(property = PROPERTY_PREFIX + "extension",
             defaultValue = "zip")
-    protected String extension;
-    
+    private String extension;
+
     /**
      * Attach the produced artifact.
      */
     @Parameter(property = PROPERTY_PREFIX + "attach",
             defaultValue = "true")
-    protected Boolean attach;
+    private Boolean attach;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         this.project.addCompileSourceRoot(null);
         List<ZipFileSet> fsets;
-        if(filesets != null && filesets.length >0){
+        if (filesets != null && filesets.length > 0) {
             fsets = Arrays.asList(filesets);
         } else {
             fsets = new ArrayList<ZipFileSet>();
@@ -154,28 +157,42 @@ public class ZipMojo extends AbstractMojo {
         }
 
         File target = createZip(project.getProperties(), getLog(),
-                duplicate, fsets, new File(outputDirectory, finalName + '.' + extension));
+                duplicate, fsets, new File(outputDirectory,
+                        finalName + '.' + extension));
 
         if (attach) {
             project.getArtifact().setFile(target);
             project.getArtifact().setArtifactHandler(
-                    new DistributionArtifactHandler(extension, project.getPackaging()));
+                    new DistributionArtifactHandler(extension,
+                            project.getPackaging()));
         }
     }
 
-    private static class DistributionArtifactHandler implements ArtifactHandler {
+    /**
+     * {@code ArtifactHandler} implementation.
+     */
+    private static final class DistributionArtifactHandler
+            implements ArtifactHandler {
 
+        /**
+         * Artifact file extension.
+         */
         private final String extension;
+
+        /**
+         * Artifact packaging.
+         */
         private final String packaging;
 
-        public DistributionArtifactHandler() {
-            extension = "zip";
-            packaging = "glassfish-distribution";
-        }
-
-        public DistributionArtifactHandler(String extension, String packaging) {
-            this.extension = extension;
-            this.packaging = packaging;
+        /**
+         * Create a new {@code DistributionArtifactHandler} instance.
+         * @param ext the artifact extension
+         * @param pkg the artifact packaging
+         */
+        private DistributionArtifactHandler(final String ext,
+                final String pkg) {
+            this.extension = ext;
+            this.packaging = pkg;
         }
 
         @Override

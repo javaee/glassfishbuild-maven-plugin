@@ -72,8 +72,11 @@ import static org.glassfish.build.utils.MavenHelper.unpack;
         requiresDependencyResolution = ResolutionScope.RUNTIME,
         defaultPhase = LifecyclePhase.PROCESS_RESOURCES,
         requiresProject = true)
-public class UnpackSourcesMojo extends AbstractMojo {
+public final class UnpackSourcesMojo extends AbstractMojo {
 
+    /**
+     * Parameters property prefix.
+     */
     private static final String PROPERTY_PREFIX = "gfbuild.unpack";
 
     /**
@@ -107,7 +110,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
      * To look up Archiver/UnArchiver implementations.
      */
     @Component
-    protected ArchiverManager archiverManager;
+    private ArchiverManager archiverManager;
 
     /**
      * Comma separated list of include patterns.
@@ -127,7 +130,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "excludeTransitive",
             defaultValue = "",
             required = false)
-    protected boolean excludeTransitive;
+    private boolean excludeTransitive;
 
     /**
      * Comma Separated list of Types to include.
@@ -136,7 +139,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "includeTypes",
             defaultValue = "",
             required = false)
-    protected String includeTypes;
+    private String includeTypes;
 
     /**
      * Comma Separated list of Types to exclude.
@@ -145,7 +148,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "excludeTypes",
             defaultValue = "",
             required = false)
-    protected String excludeTypes;
+    private String excludeTypes;
 
     /**
      * Scope to include.
@@ -154,7 +157,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "includeScope",
             defaultValue = "",
             required = false)
-    protected String includeScope;
+    private String includeScope;
 
     /**
      * Scope to exclude.
@@ -163,7 +166,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "excludeScope",
             defaultValue = "",
             required = false)
-    protected String excludeScope;
+    private String excludeScope;
 
     /**
      * Comma Separated list of Classifiers to include.
@@ -172,7 +175,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "includeClassifiers",
             defaultValue = "",
             required = false)
-    protected String includeClassifiers;
+    private String includeClassifiers;
 
     /**
      * Comma Separated list of Classifiers to exclude.
@@ -181,7 +184,7 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "excludeClassifiers",
             defaultValue = "",
             required = false)
-    protected String excludeClassifiers;
+    private String excludeClassifiers;
 
     /**
      * Comma separated list of Artifact names to exclude.
@@ -189,28 +192,28 @@ public class UnpackSourcesMojo extends AbstractMojo {
     @Parameter(property = PROPERTY_PREFIX + "excludeArtifactIds",
             defaultValue = "",
             required = false)
-    protected String excludeArtifactIds;
+    private String excludeArtifactIds;
 
     /**
      * Comma separated list of Artifact names to include.
      */
     @Parameter(property = PROPERTY_PREFIX + "includeArtifactIds",
             defaultValue = "")
-    protected String includeArtifactIds;
+    private String includeArtifactIds;
 
     /**
      * Comma separated list of GroupId Names to exclude.
      */
     @Parameter(property = PROPERTY_PREFIX + "excludeGroupIds",
             defaultValue = "")
-    protected String excludeGroupIds;
+    private String excludeGroupIds;
 
     /**
      * Comma separated list of GroupIds to include.
      */
     @Parameter(property = PROPERTY_PREFIX + "includeGroupIds",
             defaultValue = "")
-    protected String includeGroupIds;
+    private String includeGroupIds;
 
     /**
      * Directory where the sources artifacts are unpacked.

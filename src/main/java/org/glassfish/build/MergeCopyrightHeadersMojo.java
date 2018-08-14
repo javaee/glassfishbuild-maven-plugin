@@ -56,40 +56,44 @@ import org.apache.maven.plugins.annotations.Parameter;
  * Merges two property files properly.
  */
 @Mojo(name = "merge-copyright-headers")
-public class MergeCopyrightHeadersMojo extends AbstractMojo {
- 
-    private static final String LINE_SEP = System.getProperty("line.separator");
-    private static final String PROPERTY_PREFIX = "merge.copyright.headers.outputFile";
+public final class MergeCopyrightHeadersMojo extends AbstractMojo {
+
+    /**
+     * Parameters property prefix.
+     */
+    private static final String PROPERTY_PREFIX =
+            "merge.copyright.headers.outputFile";
 
     /**
      * The merged file.
      */
     @Parameter(property = PROPERTY_PREFIX + "outputFile",
             defaultValue = "${project.build.directory}/merged.properties")
-    protected File outputFile;
+    private File outputFile;
 
     /**
      * The files to merge.
      */
     @Parameter(property = PROPERTY_PREFIX + "inputFiles")
-    protected File[] inputFiles;
+    private File[] inputFiles;
 
     /**
      * Skip this mojo.
      */
     @Parameter(property = PROPERTY_PREFIX + "skip",
             defaultValue = "false")
-    protected Boolean skip;
+    private Boolean skip;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if(skip != null && skip){
+
+        if (skip) {
             getLog().info("Skipping file merge ...");
             return;
         }
 
-        BufferedReader br1=null, br2=null;
-        BufferedWriter writer=null;
+        BufferedReader br1 = null, br2 = null;
+        BufferedWriter writer = null;
 
         try {
             String line;
@@ -97,14 +101,17 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
 
             if (inputFiles != null && inputFiles.length > 1) {
 
-                // Get contents of file
+                File file1 = inputFiles[0];
+                getLog().info("Reading input file:"
+                        + file1.getAbsolutePath());
+
+                // Get contents of file1
                 try {
-                    File file = inputFiles[0];
-                    getLog().info("Reading input file:" + file.getAbsolutePath());
-                    br1 = new BufferedReader(new FileReader(file));
+
+                    br1 = new BufferedReader(new FileReader(file1));
                     while ((line = br1.readLine()) != null) {
                         sb.append(line);
-                        sb.append(LINE_SEP);
+                        sb.append(System.lineSeparator());
                     }
                 } finally {
                     if (br1 != null) {
@@ -112,19 +119,22 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
                     }
                 }
 
-                for (int i=1; i<inputFiles.length; i++) {
-                    File file = inputFiles[i];
-                    getLog().info("Reading input file:" + file.getAbsolutePath());
-                    // Get contents of input file and skip the comments
+                for (int i = 1; i < inputFiles.length; i++) {
+
+                    File file2 = inputFiles[i];
+                    getLog().info("Reading input file:"
+                            + file2.getAbsolutePath());
+
+                    // Get contents of file2 and skip the comments
                     try {
-                        br2 = new BufferedReader(new FileReader(file));
+                        br2 = new BufferedReader(new FileReader(file2));
                         while ((line = br2.readLine()) != null) {
                             line = line.trim();
                             if (line.startsWith("#")) {
                                 continue;
                             }
                             sb.append(line);
-                            sb.append(LINE_SEP);
+                            sb.append(System.lineSeparator());
                         }
                     } finally {
                         if (br2 != null) {
@@ -146,6 +156,6 @@ public class MergeCopyrightHeadersMojo extends AbstractMojo {
             }
         } catch (IOException ex) {
             throw new MojoExecutionException(ex.getMessage(), ex);
-        } 
+        }
     }
 }
