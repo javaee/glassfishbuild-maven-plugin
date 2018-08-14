@@ -252,8 +252,7 @@ public class GeneratePomMojo extends AbstractMojo {
     private RepositorySystemSession repoSession;
 
     /**
-     * The project remote repositories to use for the resolution of project
-     * dependencies.
+     * The project remote repositories to use.
      */
     @Parameter(defaultValue = "${project.remoteProjectRepositories}",
             readonly = true)

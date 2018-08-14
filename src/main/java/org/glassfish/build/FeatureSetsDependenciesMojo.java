@@ -100,10 +100,9 @@ public class FeatureSetsDependenciesMojo extends AbstractMojo {
 
     /**
      * The project remote repositories to use.
-     *
-     * @parameter default-value="${project.remoteProjectRepositories}"
-     * @readonly
      */
+    @Parameter(defaultValue = "${project.remoteProjectRepositories}",
+            readonly = true)
     private List<RemoteRepository> remoteRepos;
 
     /**
