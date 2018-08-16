@@ -193,8 +193,9 @@ public final class FeatureSetsDependenciesMojo extends AbstractMojo {
     private String featureSetGroupIdIncludes;
 
     /**
-     * @parameter
+     * Custom mappings.
      */
+    @Parameter
     private List<DependencyMapping> mappings;
 
     /**
